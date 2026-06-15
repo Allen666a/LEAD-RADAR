@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="stats">
+  <div class="stat"><strong>{{ stats.total }}</strong><span class="muted">今日候选</span></div>
+  <div class="stat"><strong>{{ stats.hot }}</strong><span class="muted">高分客户</span></div>
+  <div class="stat"><strong>{{ stats.due }}</strong><span class="muted">到期复访</span></div>
+  <div class="stat"><strong>{{ stats.missing_contact }}</strong><span class="muted">缺联系方式</span></div>
+</section>
+
+<div class="card card-body page-intro">
+  <div>
+    <strong>今日必跟进</strong>
+    <div class="muted">优先处理到期复访、高分新客和已识别联系方式的动态住宅 IP 强相关线索。</div>
+  </div>
+  <div class="actions">
+    <a class="btn btn-sm btn-outline-secondary" href="/pipeline">跟进池</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/cadence">销售节奏</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/contact-workbench">补联系方式</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/research">客户研究</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/domestic-review">国内质检</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/performance">平台效果</a>
+  </div>
+</div>
+
+<form method="post" action="/pipeline/bulk">
+  <div class="card card-body actions table-toolbar">
+    <select class="form-select form-select-sm" name="bulk_status">
+      <option value="">批量改阶段</option>
+      {% for key, label in prospect_status_labels.items() %}
+      <option value="{{ key }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select class="form-select form-select-sm" name="follow_up_days">
+      <option value="0">安排复访</option>
+      <option value="1">1 天后</option>
+      <option value="3">3 天后</option>
+      <option value="7">7 天后</option>
+      <option value="14">14 天后</option>
+    </select>
+    <button class="btn btn-sm btn-primary" type="submit">应用到选中客户</button>
+  </div>
+
+  <div class="work-queue">
+    {% for row in prospects %}
+    {% set action_text = row.next_action or row.suggested_action or "-" %}
+    {% set evidence_text = (row.evidence or "-").split("\n")[0] %}
+    {% set t = prospect_time(row) %}
+    <article class="work-card compact">
+      <div>
+        <input class="form-check-input" type="checkbox" name="prospect_ids" value="{{ row.id }}">
+        <div class="mt-2"><span class="score {{ 'mid' if row.lead_score < 80 else '' }}">{{ row.lead_score }}</span></div>
+      </div>
+
+      <div>
+        <a class="work-title" href="/prospects/{{ row.id }}">{{ row.display_name }}</a>
+        <div class="work-meta">{{ row.platform }} · {{ product_fit_labels.get(row.product_fit, row.product_fit) }}</div>
+        {% if row.profile_url %}<div class="clickable-text mt-1"><a href="{{ row.profile_url }}" target="_blank" rel="noreferrer">主页</a> · {{ linkify(row.profile_url) }}</div>{% endif %}
+        <div class="mt-2"><span class="pill {{ t.class }}">时效：{{ t.label }}</span></div>
+      </div>
+
+      <div class="work-text">
+        <div class="review-section-title">类型 / 联系方式</div>
+        <div>{{ customer_type_labels.get(row.customer_type, row.customer_type) }}</div>
+        {% if row.wechat %}<div class="contact-line mt-2">微信：{{ row.wechat }}</div>{% endif %}
+        {% if row.telegram %}<div class="contact-line">TG：{{ row.telegram }}</div>{% endif %}
+        {% if row.email %}<div class="contact-line">{{ linkify(row.email) }}</div>{% endif %}
+        {% if row.contact_note and not row.wechat and not row.telegram and not row.email %}
+        <div class="cell-note mt-2">{{ row.contact_note }}</div>
+        {% endif %}
+        {% if not row.wechat and not row.telegram and not row.email and not row.contact_note %}<span class="pill warn mt-2">待补</span>{% endif %}
+      </div>
+
+      <div class="work-text">
+        <div class="review-section-title">跟进要点</div>
+        <div><strong>下一步：</strong>{{ action_text }}</div>
+        <div class="muted mt-2"><strong>证据：</strong>{{ linkify(evidence_text) }}</div>
+      </div>
+
+      <div class="work-text">
+        <div class="review-section-title">复访 / 操作</div>
+        <div class="cell-note">{{ row.next_follow_up_at.strftime("%Y-%m-%d %H:%M") if row.next_follow_up_at else "未安排" }}</div>
+        <a class="btn btn-sm btn-primary mt-2" href="/prospects/{{ row.id }}">处理</a>
+      </div>
+    </article>
+    {% else %}
+    <div class="empty-state">暂无今日必跟进客户。</div>
+    {% endfor %}
+  </div>
+</form>
+{% endblock %}

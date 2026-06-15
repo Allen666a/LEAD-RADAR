@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="stats">
+  <div class="stat"><strong>{{ stats.platforms }}</strong><span class="muted">监控平台</span></div>
+  <div class="stat"><strong>{{ stats.focus }}</strong><span class="muted">重点投入</span></div>
+  <div class="stat"><strong>{{ stats.contactable }}</strong><span class="muted">可联系客户</span></div>
+  <div class="stat"><strong>{{ stats.high_value }}</strong><span class="muted">高价值线索</span></div>
+</section>
+
+<div class="card card-body" style="margin-bottom: 14px">
+  <strong>平台效果看板</strong>
+  <div class="muted">不是看谁抓得多，而是看谁能产出动态住宅 IP 相关、可联系、能推进的客户。</div>
+  <div class="actions" style="margin-top:10px">
+    <a class="btn btn-sm btn-outline-secondary" href="/platforms">平台矩阵</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/today">今日跟进</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/contact-workbench">补联系方式</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/feedback">转化反馈</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/analytics">归因分析</a>
+  </div>
+</div>
+
+<table class="table table-vcenter card-table">
+  <thead>
+    <tr>
+      <th>平台</th>
+      <th>投入分</th>
+      <th>来源/线索</th>
+      <th>高价值</th>
+      <th>客户</th>
+      <th>可联系</th>
+      <th>匹配</th>
+      <th>销售进展</th>
+      <th>建议</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      <td><strong>{{ row.platform }}</strong></td>
+      <td><span class="score {{ 'mid' if row.score < 75 else '' }}">{{ row.score }}</span></td>
+      <td class="muted">来源 {{ row.sources }} / 线索 {{ row.mentions }}</td>
+      <td>
+        {{ row.high_value_mentions }}
+        <div class="muted">{{ "%.1f%%"|format(row.high_value_rate * 100) }}</div>
+      </td>
+      <td>
+        {{ row.prospects }}
+        <div class="muted">均分 {{ "%.1f"|format(row.avg_score) }}</div>
+      </td>
+      <td>
+        {{ row.contactable_prospects }}
+        <div class="muted">{{ "%.1f%%"|format(row.contact_rate * 100) }}</div>
+      </td>
+      <td class="muted">
+        <div>直匹配 {{ row.direct_fit }}</div>
+        <div>场景 {{ row.scenario_fit }}</div>
+      </td>
+      <td class="muted">
+        <div>今日 {{ row.due_today }}</div>
+        <div>已触达 {{ row.contacted }}</div>
+        <div>测试 {{ row.trial_sent }} / 成交 {{ row.won }} / 无效 {{ row.invalid }}</div>
+      </td>
+      <td>{{ row.recommendation }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

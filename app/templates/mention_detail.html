@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block content %}
+{% set t = mention_time(mention) %}
+{% set report = evidence_report %}
+
+<div class="page-header">
+  <div class="row align-items-center">
+    <div class="col">
+      <div class="page-title">{{ mention.title }}</div>
+      <div class="page-subtitle">
+        {{ mention.source_name }} · {{ t.basis }} {{ format_dt(t.time) }} · 发现 {{ t.discovered }}
+        {% if mention.author %} · 作者 {{ mention.author }}{% endif %}
+      </div>
+    </div>
+    <div class="col-auto actions">
+      <a class="btn btn-outline-secondary" href="/leads"><i class="ti ti-arrow-left"></i> 返回线索池</a>
+      <a class="btn btn-primary" href="{{ mention.canonical_url }}" target="_blank" rel="noreferrer"><i class="ti ti-external-link"></i> 打开原文</a>
+    </div>
+  </div>
+</div>
+
+<div class="card card-body mb-3">
+  <div class="actions">
+    <span class="score {% if mention.score < 60 %}low{% elif mention.score < 80 %}mid{% endif %}">{{ mention.score }}</span>
+    <span class="pill {{ report.freshness_status }}">时效：{{ report.freshness_label }}</span>
+    <span class="pill good">{{ report.source_platform }}</span>
+    <span class="pill good">{{ report.persona }}</span>
+    <span class="pill {{ report.contact_status }}">{{ report.contact_label }}</span>
+    <span class="pill">{{ signal_labels.get(mention.signal_type, mention.signal_type) }}</span>
+    <span class="pill">{{ status_labels.get(mention.status, mention.status) }}</span>
+    {% if mention.prospect_id %}<a class="btn btn-sm btn-outline-secondary" href="/prospects/{{ mention.prospect_id }}">客户画像</a>{% endif %}
+  </div>
+</div>
+
+<section class="detail-grid">
+  <div>
+    <div class="card card-body mb-3">
+      <div class="section-title mb-2">证据引擎</div>
+      <div class="table-responsive">
+        <table class="table">
+          <tbody>
+            {% for item in report.evidence %}
+            <tr>
+              <th style="width: 150px">{{ item.label }}</th>
+              <td><span class="pill {{ item.status }}">{{ item.value }}</span></td>
+            </tr>
+            {% endfor %}
+            <tr>
+              <th>原文链接</th>
+              <td><a href="{{ mention.canonical_url }}" target="_blank" rel="noreferrer">{{ mention.canonical_url }}</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card card-body mb-3">
+      <div class="section-title mb-2">为什么值得看</div>
+      <ul class="mb-0">
+        {% for reason in report.positive_reasons %}
+        <li>{{ reason }}</li>
+        {% else %}
+        <li class="muted">暂无强证据，建议先放入观察池。</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="card card-body mb-3">
+      <div class="section-title mb-2">需要警惕</div>
+      <ul class="mb-0">
+        {% for reason in report.risk_reasons %}
+        <li>{{ reason }}</li>
+        {% else %}
+        <li class="muted">暂无明显风险。</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="card card-body mb-3">
+      <div class="section-title mb-2">原文完整内容</div>
+      <div class="content-box">{{ mention.content or "没有抓到正文，建议打开原文查看。" }}</div>
+    </div>
+
+    <div class="card card-body mb-3">
+      <div class="section-title mb-2">评分与命中词</div>
+      <div class="content-box mb-3">{{ mention.score_reasons or "暂无评分原因。" }}</div>
+      <div class="content-box">{{ mention.matched_keywords or "-" }}</div>
+    </div>
+  </div>
+
+  <aside>
+    <div class="card card-body mb-3">
+      <div class="section-title mb-2">下一步</div>
+      <p class="content-box">{{ report.recommended_action }}</p>
+      {% if mention.prospect_id %}
+      <form method="post" action="/mentions/{{ mention.id }}/enrich-contact" class="mb-2">
+        <button class="btn btn-primary w-100" type="submit"><i class="ti ti-search"></i> 补联系方式</button>
+      </form>
+      {% endif %}
+      <div class="actions">
+        {% for key, label in status_labels.items() %}
+        <form method="post" action="/mentions/{{ mention.id }}/status/{{ key }}" style="margin:0">
+          <button class="{% if key == 'invalid' %}danger{% endif %} btn btn-sm btn-outline-secondary" type="submit">{{ label }}</button>
+        </form>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card card-body mb-3">
+      <div class="section-title mb-2">联系方式瀑布</div>
+      <div class="event-list">
+        {% for step in report.contact_steps %}
+        <div class="event-row">
+          <div>
+            <strong>{{ step.label }}</strong>
+            <div class="muted">{{ step.note }}</div>
+            {% if step.url %}
+            <a href="{{ step.url }}" target="_blank" rel="noreferrer">{{ step.target }}</a>
+            {% else %}
+            <div class="content-box">{{ step.target }}</div>
+            {% endif %}
+          </div>
+          <span class="pill {% if step.status in ['已定位', '可检查'] %}good{% elif step.status == '缺资料' %}warn{% endif %}">{{ step.status }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card card-body mb-3">
+      <div class="section-title mb-2">首轮资格问题</div>
+      <ol class="mb-0">
+        {% for question in report.qualification_questions %}
+        <li>{{ question }}</li>
+        {% endfor %}
+      </ol>
+    </div>
+
+    <div class="card card-body mb-3">
+      <div class="section-title mb-2">跟进话术</div>
+      <textarea id="outreach" class="copy-box" readonly>{{ mention.outreach_message }}</textarea>
+      <div class="actions mt-2">
+        <button class="btn btn-primary" type="button" onclick="copyOutreach()"><i class="ti ti-copy"></i> 复制话术</button>
+        <form method="post" action="/mentions/{{ mention.id }}/notify" style="margin:0">
+          <button class="btn btn-outline-secondary" type="submit"><i class="ti ti-send"></i> 推送企微</button>
+        </form>
+      </div>
+      <div id="copy-status" class="muted mt-2"></div>
+    </div>
+  </aside>
+</section>
+
+<script>
+async function copyOutreach() {
+  const el = document.getElementById('outreach');
+  const status = document.getElementById('copy-status');
+  try {
+    await navigator.clipboard.writeText(el.value);
+    status.textContent = '已复制';
+  } catch (error) {
+    el.select();
+    document.execCommand('copy');
+    status.textContent = '已复制';
+  }
+}
+</script>
+{% endblock %}

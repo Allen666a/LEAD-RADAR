@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block content %}
+{% if message %}
+<div class="alert alert-success" role="alert">{{ message }}</div>
+{% endif %}
+
+<section class="feedback-hero">
+  <div>
+    <p class="eyebrow">学习闭环</p>
+    <h1>结果反馈</h1>
+    <p>把触达、测试、成交和无效原因记录下来，系统才知道哪些平台、关键词和客户类型值得继续放大。</p>
+  </div>
+  <div class="feedback-actions">
+    <form method="post" action="/feedback/learn">
+      <button class="btn btn-primary" type="submit"><i class="ti ti-adjustments"></i>应用学习调权</button>
+    </form>
+    <a class="btn btn-outline-secondary" href="/feedback.csv"><i class="ti ti-download"></i>导出 CSV</a>
+    <a class="btn btn-outline-secondary" href="/today"><i class="ti ti-calendar-check"></i>今日作战</a>
+  </div>
+</section>
+
+<section class="feedback-stats">
+  <div>
+    <strong>{{ board.summary.prospects }}</strong>
+    <span>客户画像</span>
+  </div>
+  <div>
+    <strong>{{ board.summary.contacted }}</strong>
+    <span>已推进</span>
+  </div>
+  <div>
+    <strong>{{ board.summary.trial_sent }}</strong>
+    <span>已发测试</span>
+  </div>
+  <div>
+    <strong>{{ board.summary.won }}</strong>
+    <span>已成交</span>
+  </div>
+  <div>
+    <strong>{{ "%.0f%%"|format(board.summary.event_coverage * 100) }}</strong>
+    <span>反馈覆盖</span>
+  </div>
+</section>
+
+<section class="feedback-layout">
+  <div class="feedback-main">
+    <section class="feedback-panel">
+      <div class="panel-head">
+        <div>
+          <h2>快速记录反馈</h2>
+          <p>优先处理近期已触达或已发测试的线索。真实反馈越具体，后面的推荐越准。</p>
+        </div>
+        <span class="quiet-pill">{{ ops.missing_feedback }} 条待补</span>
+      </div>
+
+      <div class="feedback-candidates">
+        {% for item in ops.candidates %}
+        {% set p = item.prospect %}
+        <article class="feedback-candidate">
+          <div class="feedback-candidate-main">
+            <div class="feedback-score">{{ p.lead_score }}</div>
+            <div>
+              <a class="feedback-title" href="/prospects/{{ p.id }}">{{ item.title }}</a>
+              <div class="feedback-meta">
+                {{ p.platform or "unknown" }} · {{ p.customer_type or "未识别" }} · {{ status_outcomes.get(p.status, p.status) }}
+              </div>
+              <p>{{ item.reason_hint }}</p>
+              {% if p.homepage %}
+              <a class="text-teal" href="{{ p.homepage }}" target="_blank" rel="noopener">打开主页</a>
+              {% endif %}
+            </div>
+          </div>
+          <form class="feedback-form" method="post" action="/feedback/record">
+            <input type="hidden" name="prospect_id" value="{{ p.id }}">
+            <label>
+              结果
+              <select name="outcome">
+                {% for key, label in outcome_labels.items() %}
+                <option value="{{ key }}" {{ "selected" if key == item.recommended_outcome else "" }}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              原因
+              <select name="reason">
+                <option value="">先不选原因</option>
+                {% for key, label in reason_labels.items() %}
+                <option value="{{ key }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              复访
+              <select name="follow_up_days">
+                <option value="0">默认</option>
+                <option value="1">1 天</option>
+                <option value="3">3 天</option>
+                <option value="7">7 天</option>
+                <option value="14">14 天</option>
+              </select>
+            </label>
+            <label class="feedback-note">
+              真实反馈
+              <textarea name="note" rows="2" placeholder="例如：要美国 TikTok，小量测试；价格卡住；实际要静态 IP"></textarea>
+            </label>
+            <button class="btn btn-primary" type="submit">记录</button>
+          </form>
+        </article>
+        {% else %}
+        <div class="empty-state">
+          <strong>暂无待补反馈</strong>
+          <p>当前可推进线索近期都已记录过结果。可以去今日作战继续触达，或者查看学习建议。</p>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="feedback-panel">
+      <div class="panel-head">
+        <div>
+          <h2>学习建议</h2>
+          <p>这里只显示会影响动作的建议，避免把反馈页变成又一张复杂报表。</p>
+        </div>
+      </div>
+      <div class="feedback-recommendations">
+        {% for item in board.recommendations %}
+        <div>{{ item }}</div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="feedback-panel">
+      <div class="panel-head">
+        <div>
+          <h2>关键词学习预览</h2>
+          <p>成交、测试会加权；无效、旧线索、非目标客户会降权或暂停。</p>
+        </div>
+      </div>
+      <div class="feedback-list">
+        {% for row in learning.keyword_rows[:10] %}
+        <div class="feedback-list-row">
+          <div>
+            <strong>{{ row.keyword }}</strong>
+            <span>{{ row.mentions }} 条 / {{ row.prospects }} 客户</span>
+          </div>
+          <span class="score {{ 'mid' if row.delta < 0 else '' }}">{{ "%+d"|format(row.delta) }}</span>
+          <p>{{ row.reason }}</p>
+        </div>
+        {% else %}
+        <div class="empty-state"><p>暂无关键词反馈，先记录触达、测试、成交或无效。</p></div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <aside class="feedback-side">
+    <section class="feedback-panel">
+      <h2>反馈原因分布</h2>
+      <p>帮助判断是来源问题、关键词问题，还是联系动作问题。</p>
+      <div class="reason-list">
+        {% for row in ops.reason_rows %}
+        <div>
+          <strong>{{ row.label }}</strong>
+          <span>{{ row.count }} 次</span>
+          <small>正向 {{ row.positive }} / 负向 {{ row.negative }}</small>
+        </div>
+        {% else %}
+        <p class="muted mb-0">还没有结构化原因。先从上方快速记录几条真实结果。</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="feedback-panel">
+      <h2>当前缺口</h2>
+      <div class="gap-row">
+        <span>高价值但无反馈</span>
+        <strong>{{ ops.high_value_without_feedback }}</strong>
+      </div>
+      <div class="gap-row">
+        <span>事件覆盖率</span>
+        <strong>{{ "%.0f%%"|format(board.summary.event_coverage * 100) }}</strong>
+      </div>
+      <div class="gap-row">
+        <span>无效客户</span>
+        <strong>{{ board.summary.invalid }}</strong>
+      </div>
+    </section>
+
+    <section class="feedback-panel">
+      <h2>最近反馈</h2>
+      <div class="recent-events">
+        {% for event in board.recent_events[:12] %}
+        <a href="/prospects/{{ event.prospect_id }}">
+          <strong>{{ status_outcomes.get(event.value, event.value or event_labels.get(event.event_type, event.event_type)) }}</strong>
+          <span>{{ event.platform or "unknown" }} · {{ event.created_at.strftime("%m-%d %H:%M") if event.created_at else "-" }}</span>
+          {% if event.note %}<small>{{ event.note }}</small>{% endif %}
+        </a>
+        {% else %}
+        <p class="muted mb-0">暂无反馈事件。</p>
+        {% endfor %}
+      </div>
+    </section>
+  </aside>
+</section>
+{% endblock %}

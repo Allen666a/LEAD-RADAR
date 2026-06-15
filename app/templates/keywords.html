@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card card-body" style="margin-bottom: 14px">
+  <strong>关键词库</strong>
+  <div class="muted">第一版聚焦海外动态住宅 IP，不把静态住宅/ISP 作为核心目标。</div>
+</div>
+
+<form class="card card-body" method="post" action="/keywords" style="margin-bottom: 14px">
+  <strong>新增关键词</strong>
+  <div class="actions" style="margin-top:10px">
+    <input class="form-control form-control-sm" name="phrase" placeholder="例如 TikTok 动态住宅 IP" style="min-width:260px" required>
+    <input class="form-control form-control-sm" name="weight" type="number" min="1" max="100" value="20" style="width:90px">
+    <input class="form-control form-control-sm" name="category" value="scenario" style="width:140px">
+    <button class="btn btn-primary btn-sm" type="submit">添加</button>
+  </div>
+</form>
+
+<section class="card card-body" style="margin-bottom: 14px">
+  <strong>扩词候选</strong>
+  <div class="muted">只围绕海外动态住宅 IP 的真实需求场景生成，优先补 TikTok、亚马逊、防关联、Cloudflare、爬虫被封等词。</div>
+</section>
+<table class="table table-vcenter card-table" style="margin-bottom: 18px">
+  <thead>
+    <tr>
+      <th>候选词</th>
+      <th>优先级</th>
+      <th>分类</th>
+      <th>建议权重</th>
+      <th>原因</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in suggestions %}
+    <tr>
+      <td><strong>{{ item.phrase }}</strong></td>
+      <td><span class="score {{ 'mid' if item.priority < 70 else '' }}">{{ item.priority }}</span></td>
+      <td>{{ item.category }}</td>
+      <td>{{ item.weight }}</td>
+      <td>{{ item.reason }}</td>
+      <td>
+        <form method="post" action="/keywords">
+          <input type="hidden" name="phrase" value="{{ item.phrase }}">
+          <input type="hidden" name="weight" value="{{ item.weight }}">
+          <input type="hidden" name="category" value="{{ item.category }}">
+          <button class="btn btn-sm btn-outline-secondary" type="submit">加入词库</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<table class="table table-vcenter card-table">
+  <thead>
+    <tr>
+      <th>关键词</th>
+      <th>权重</th>
+      <th>分类</th>
+      <th>状态</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in keywords %}
+    <tr>
+      <td><strong>{{ row.phrase }}</strong></td>
+      <td colspan="2">
+        <form class="actions" method="post" action="/keywords/{{ row.id }}/weight">
+          <input class="form-control form-control-sm" name="weight" type="number" min="1" max="100" value="{{ row.weight }}" style="width:80px">
+          <input class="form-control form-control-sm" name="category" value="{{ row.category }}" style="width:140px">
+          <button class="btn btn-sm btn-outline-secondary" type="submit">保存</button>
+        </form>
+      </td>
+      <td>{{ "启用" if row.enabled else "停用" }}</td>
+      <td>
+        <form method="post" action="/keywords/{{ row.id }}/toggle">
+          <button class="{{ 'danger' if row.enabled else '' }} btn btn-sm btn-outline-secondary" type="submit">{{ "停用" if row.enabled else "启用" }}</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

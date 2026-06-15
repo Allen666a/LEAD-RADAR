@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card card-body" style="margin-bottom:14px">
+  <strong>Agent 后台引擎</strong>
+  <div class="muted">
+    这里是实用型后台流水线：Web 控制台只投任务，多个 worker 子进程负责采集、清洗、评分、客户画像、联系方式缺口和跟进节奏。
+  </div>
+  {% if message %}
+  <div class="pill good" style="margin-top:10px">{{ message }}</div>
+  {% endif %}
+  <div class="actions" style="margin-top:12px">
+    <form method="post" action="/agents/start" class="actions" style="margin:0">
+      <input class="form-control form-control-sm" name="workers" type="number" min="1" max="8" value="3" style="width:76px">
+      <input class="form-control form-control-sm" name="poll_seconds" type="number" min="1" max="60" value="5" style="width:76px">
+      <button class="btn btn-sm btn-primary" type="submit">启动 worker</button>
+    </form>
+    <form method="post" action="/agents/enqueue/domestic" class="actions" style="margin:0">
+      <input class="form-control form-control-sm" name="source_limit" type="number" min="1" max="100" value="30" style="width:82px">
+      <button class="btn btn-sm btn-primary" type="submit">跑国内获客流水线</button>
+    </form>
+    <form method="post" action="/agents/enqueue/maintenance" style="margin:0">
+      <button class="btn btn-sm btn-outline-secondary" type="submit">只跑清洗/画像/节奏</button>
+    </form>
+    <form method="post" action="/agents/retry-failed" style="margin:0">
+      <button class="btn btn-sm btn-outline-secondary" type="submit">重试失败</button>
+    </form>
+    <form method="post" action="/agents/stop" style="margin:0">
+      <button class="btn btn-sm btn-outline-danger" type="submit">停止 worker</button>
+    </form>
+    <a class="btn btn-sm btn-outline-secondary" href="/agents.csv">导出任务 CSV</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/agents/status.json">状态 JSON</a>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><strong>{{ stats.active_workers }}</strong><span class="muted">活跃 worker</span></div>
+  <div class="stat"><strong>{{ stats.running }}</strong><span class="muted">运行中任务</span></div>
+  <div class="stat"><strong>{{ stats.queued + stats.retry }}</strong><span class="muted">待处理/重试</span></div>
+  <div class="stat"><strong>{{ stats.failed }}</strong><span class="muted">失败任务</span></div>
+</div>
+
+<div class="detail-grid">
+  <section class="card card-body">
+    <strong>Worker 子进程</strong>
+    <div class="muted">如果这里一直为空，说明后台没有工人在跑；先启动 worker，再投放流水线。</div>
+    <div class="card table-responsive" style="margin-top:12px">
+      <table class="table table-vcenter card-table">
+        <colgroup>
+          <col style="width:35%">
+          <col style="width:80px">
+          <col style="width:92px">
+          <col style="width:90px">
+          <col>
+        </colgroup>
+        <thead>
+          <tr>
+            <th>worker</th>
+            <th>PID</th>
+            <th>状态</th>
+            <th>完成/失败</th>
+            <th>心跳/消息</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for worker in workers %}
+          <tr>
+            <td><strong>{{ worker.worker_id }}</strong></td>
+            <td>{{ worker.pid }}</td>
+            <td>
+              <span class="pill {{ 'good' if worker.status in ['idle','running'] else 'warn' }}">
+                {{ worker_status_labels.get(worker.status, worker.status) }}
+              </span>
+            </td>
+            <td>{{ worker.jobs_done }} / {{ worker.jobs_failed }}</td>
+            <td>
+              <div>{{ worker.heartbeat_at.strftime("%Y-%m-%d %H:%M:%S") if worker.heartbeat_at else "-" }}</div>
+              <div class="muted">{{ worker.message or "-" }}</div>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="muted">暂无 worker。启动后会出现多个后台子进程。</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card card-body">
+    <strong>手动投单个任务</strong>
+    <div class="muted">用于排查和补跑，不建议替代“国内获客流水线”。</div>
+    <form method="post" action="/agents/enqueue/job" class="actions" style="margin-top:12px">
+      <select class="form-select form-select-sm" name="kind">
+        <option value="research_snapshot">客户研究快照</option>
+        <option value="cadence_snapshot">销售节奏快照</option>
+        <option value="contact_snapshot">补联系方式快照</option>
+        <option value="performance_snapshot">平台效果快照</option>
+        <option value="feedback_snapshot">转化反馈快照</option>
+        <option value="feedback_learning">反馈学习调权</option>
+        <option value="contact_enrichment">联系人自动补全</option>
+        <option value="prospect_hygiene">客户质量清洗</option>
+        <option value="dedupe_audit">重复客户审计</option>
+        <option value="compliance_audit">合规风险审核</option>
+        <option value="p3_quality_audit">P3 线索质量审计</option>
+        <option value="session_domestic">国内会话采集</option>
+        <option value="b2b_waterfall">B2B Waterfall</option>
+        <option value="b2b_website_scan">B2B 官网扫描</option>
+        <option value="b2b_github_enrich">B2B GitHub 增强</option>
+        <option value="b2b_contact_waterfall">B2B 联系方式补全</option>
+        <option value="collect_domestic">国内来源采集</option>
+        <option value="refresh_scores">线索重评分</option>
+        <option value="purge_noise">清理噪音线索</option>
+        <option value="rebuild_prospects">重建客户画像</option>
+        <option value="audit_sources">来源质量审计</option>
+      </select>
+      <input class="form-control form-control-sm" name="source_limit" type="number" min="1" max="100" value="30" style="width:82px">
+      <button class="btn btn-sm btn-outline-secondary" type="submit">加入队列</button>
+    </form>
+    <div class="muted" style="margin-top:14px; line-height:1.7">
+      最推荐的日常动作：启动 3 个 worker，然后点“跑国内获客流水线”。它会自动完成采集、清噪、画像和今日跟进任务生成。
+    </div>
+  </section>
+</div>
+
+<section class="card card-body" style="margin-top:16px">
+  <strong>最近任务</strong>
+  <div class="card table-responsive" style="margin-top:12px">
+    <table class="table table-vcenter card-table source-table">
+      <colgroup>
+        <col style="width:70px">
+        <col style="width:170px">
+        <col style="width:100px">
+        <col style="width:90px">
+        <col style="width:120px">
+        <col style="width:170px">
+        <col>
+        <col style="width:230px">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>任务</th>
+          <th>状态</th>
+          <th>优先级</th>
+          <th>尝试</th>
+          <th>worker</th>
+          <th>结果摘要</th>
+          <th>时间/错误</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for job in jobs %}
+        <tr>
+          <td>{{ job.id }}</td>
+          <td>
+            <strong>{{ job.label or job_labels.get(job.kind, job.kind) }}</strong>
+            <div class="muted">{{ job.kind }}</div>
+          </td>
+          <td>
+            <span class="pill {{ 'good' if job.status == 'done' else ('warn' if job.status in ['failed','retry'] else '') }}">
+              {{ job_status_labels.get(job.status, job.status) }}
+            </span>
+          </td>
+          <td>{{ job.priority }}</td>
+          <td>{{ job.attempts }} / {{ job.max_attempts }}</td>
+          <td>{{ job.locked_by or "-" }}</td>
+          <td>{{ job_result_summary(job) or "-" }}</td>
+          <td>
+            <div class="muted">{{ job.created_at.strftime("%Y-%m-%d %H:%M:%S") if job.created_at else "-" }}</div>
+            {% if job.error %}<div class="risk">{{ job.error }}</div>{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="muted">暂无任务。先启动 worker，再投放国内获客流水线。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

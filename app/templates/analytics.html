@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card card-body" style="margin-bottom: 14px">
+  <strong>获客质量分析</strong>
+  <div class="muted">按来源和客户类型查看触达、测试包、成交、无效，用销售结果反向优化来源。</div>
+  <div class="actions" style="margin-top:10px">
+    <a class="btn btn-sm btn-outline-secondary" href="/analytics.csv">导出来源归因 CSV</a>
+  </div>
+</div>
+
+<section class="card card-body" style="margin-bottom: 14px">
+  <strong>客户类型转化</strong>
+</section>
+<table class="table table-vcenter card-table" style="margin-bottom: 18px">
+  <thead>
+    <tr>
+      <th>客户类型</th>
+      <th>客户数</th>
+      <th>平均分</th>
+      <th>已触达</th>
+      <th>已加微信</th>
+      <th>已发测试</th>
+      <th>成交</th>
+      <th>无效</th>
+      <th>测试率</th>
+      <th>成交率</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in customer_type_rows %}
+    <tr>
+      <td>{{ row.label }}</td>
+      <td>{{ row.prospects }}</td>
+      <td><span class="score {{ 'mid' if row.avg_score < 80 else '' }}">{{ row.avg_score }}</span></td>
+      <td>{{ row.contacted }}</td>
+      <td>{{ row.wechat_added }}</td>
+      <td>{{ row.trial_sent }}</td>
+      <td>{{ row.won }}</td>
+      <td>{{ row.invalid }}</td>
+      <td>{{ "%.1f%%"|format(row.trial_rate * 100) }}</td>
+      <td>{{ "%.1f%%"|format(row.win_rate * 100) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<section class="card card-body" style="margin-bottom: 14px">
+  <strong>来源归因</strong>
+</section>
+<table class="table table-vcenter card-table">
+  <thead>
+    <tr>
+      <th>来源</th>
+      <th>质量</th>
+      <th>线索</th>
+      <th>高价值</th>
+      <th>客户</th>
+      <th>已触达</th>
+      <th>已加微信</th>
+      <th>已发测试</th>
+      <th>成交</th>
+      <th>无效</th>
+      <th>测试率</th>
+      <th>成交率</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in source_rows %}
+    <tr>
+      <td>
+        <strong>{{ row.source_name }}</strong>
+        <div class="muted">{{ row.source_kind }}</div>
+      </td>
+      <td>
+        <span class="pill">{{ row.quality_status }}</span>
+        <span class="pill">{{ row.quality_score }}</span>
+      </td>
+      <td>{{ row.mentions }}</td>
+      <td>{{ row.high_value_mentions }}</td>
+      <td>{{ row.prospects }}</td>
+      <td>{{ row.contacted }}</td>
+      <td>{{ row.wechat_added }}</td>
+      <td>{{ row.trial_sent }}</td>
+      <td>{{ row.won }}</td>
+      <td>{{ row.invalid }}</td>
+      <td>{{ "%.1f%%"|format(row.trial_rate * 100) }}</td>
+      <td>{{ "%.1f%%"|format(row.win_rate * 100) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<section class="card card-body" style="margin: 18px 0 14px">
+  <strong>关键词归因</strong>
+  <div class="muted">看哪些词真正带来高价值信号和客户画像，用来指导下一轮扩词和降噪。</div>
+</section>
+<table class="table table-vcenter card-table">
+  <thead>
+    <tr>
+      <th>关键词</th>
+      <th>策略分</th>
+      <th>平均线索分</th>
+      <th>线索</th>
+      <th>高价值</th>
+      <th>客户</th>
+      <th>已触达</th>
+      <th>已加微信</th>
+      <th>已发测试</th>
+      <th>成交</th>
+      <th>无效</th>
+      <th>高价值率</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in keyword_rows[:80] %}
+    <tr>
+      <td><strong>{{ row.keyword }}</strong></td>
+      <td><span class="score {{ 'mid' if row.strategy_score < 70 else '' }}">{{ row.strategy_score }}</span></td>
+      <td>{{ row.avg_score }}</td>
+      <td>{{ row.mentions }}</td>
+      <td>{{ row.high_value_mentions }}</td>
+      <td>{{ row.prospects }}</td>
+      <td>{{ row.contacted }}</td>
+      <td>{{ row.wechat_added }}</td>
+      <td>{{ row.trial_sent }}</td>
+      <td>{{ row.won }}</td>
+      <td>{{ row.invalid }}</td>
+      <td>{{ "%.1f%%"|format(row.high_value_rate * 100) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

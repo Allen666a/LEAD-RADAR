@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card card-body" style="margin-bottom: 14px">
+  <strong>获客策略台</strong>
+  <div class="muted">把来源、关键词、客户画像和销售状态汇总成下一步动作。</div>
+  {% if message %}
+  <div class="pill good" style="margin-top:10px">{{ message }}</div>
+  {% endif %}
+  <div class="actions" style="margin-top:10px">
+    <a class="btn btn-sm btn-outline-secondary" href="/strategy.csv">导出策略 CSV</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/pipeline">进入跟进池</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/analytics">查看完整分析</a>
+    <form method="post" action="/run-domestic" class="actions" style="margin:0">
+      <input class="form-control form-control-sm" name="source_limit" type="number" min="1" max="100" value="30" style="width:80px">
+      <button class="btn btn-sm btn-outline-secondary" type="submit">采集国内获客源</button>
+    </form>
+  </div>
+</div>
+
+<section class="card card-body" style="margin-bottom: 14px">
+  <strong>超级任务列表</strong>
+  <div class="muted">按这个顺序推进：先扩词，再扩源，再采集，再重建客户，再审计来源，最后进跟进池处理高分客户。</div>
+  <div class="actions" style="margin-top:10px">
+    <form method="post" action="/strategy/apply-keywords" class="actions">
+      <input class="form-control form-control-sm" name="limit" type="number" min="1" max="30" value="10" style="width:80px">
+      <button class="btn btn-sm btn-outline-secondary" type="submit">批量加入关键词</button>
+    </form>
+    <form method="post" action="/strategy/apply-sources" class="actions">
+      <input class="form-control form-control-sm" name="limit" type="number" min="1" max="40" value="12" style="width:80px">
+      <button class="btn btn-sm btn-outline-secondary" type="submit">批量加入来源</button>
+    </form>
+  </div>
+  <form method="post" action="/strategy/growth-cycle" class="actions" style="margin-top:10px">
+    <input class="form-control form-control-sm" name="keyword_limit" type="number" min="0" max="30" value="6" style="width:110px">
+    <input class="form-control form-control-sm" name="source_limit" type="number" min="0" max="40" value="8" style="width:110px">
+    <label class="pill"><input class="form-check-input" name="run_collect" type="checkbox" checked> 执行采集</label>
+    <label class="pill"><input class="form-check-input" name="auto_disable_sources" type="checkbox"> 自动停用低质源</label>
+    <button class="btn btn-primary btn-sm" type="submit">执行增长循环</button>
+  </form>
+  <div class="muted" style="margin-top:8px">自动停用默认关闭，先看审计结果再决定，避免误伤新来源。</div>
+</section>
+
+<section class="stats">
+  <div class="stat"><strong>{{ board.sales_brief.active_pipeline }}</strong><span class="muted">活跃跟进池</span></div>
+  <div class="stat"><strong>{{ board.sales_brief.due_followups }}</strong><span class="muted">今日到期复访</span></div>
+  <div class="stat"><strong>{{ board.sales_brief.high_score_new }}</strong><span class="muted">高分新客户</span></div>
+  <div class="stat"><strong>{{ board.sales_brief.no_next_action }}</strong><span class="muted">缺下一步动作</span></div>
+  <div class="stat"><strong>{{ board.sales_brief.trial_pending }}</strong><span class="muted">测试待推进</span></div>
+  <div class="stat"><strong>{{ board.sales_brief.missing_contact }}</strong><span class="muted">缺联系方式</span></div>
+</section>
+
+<section class="card card-body" style="margin-bottom: 14px">
+  <strong>行动建议</strong>
+</section>
+<div class="card table-responsive">
+<table class="table table-vcenter card-table source-candidate-table">
+  <colgroup>
+    <col><col><col><col><col><col>
+  </colgroup>
+  <thead>
+    <tr>
+      <th>优先级</th>
+      <th>类型</th>
+      <th>建议</th>
+      <th>原因</th>
+      <th>下一步</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for action in board.actions %}
+    <tr>
+      <td>
+        <span class="score {{ 'mid' if action.priority < 85 else '' }}">{{ action.priority }}</span>
+        <div class="muted">{{ action.priority_label }}</div>
+      </td>
+      <td><span class="pill good">{{ action.kind }}</span></td>
+      <td><strong>{{ action.title }}</strong></td>
+      <td>{{ action.reason }}</td>
+      <td>{{ action.next_step }}</td>
+    </tr>
+    {% endfor %}
+    {% if not board.actions %}
+    <tr><td colspan="5" class="muted">暂无足够数据生成策略，先执行采集、重建客户画像和来源审计。</td></tr>
+    {% endif %}
+  </tbody>
+</table>
+
+<div class="detail-grid" style="margin-bottom: 18px">
+  <section>
+    <div class="card card-body" style="margin-bottom: 14px"><strong>加码关键词</strong></div>
+    <table class="table table-vcenter card-table">
+      <thead>
+        <tr>
+          <th>关键词</th>
+          <th>策略分</th>
+          <th>高价值</th>
+          <th>客户</th>
+          <th>测试</th>
+          <th>成交</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in board.top_keywords %}
+        <tr>
+          <td><strong>{{ row.keyword }}</strong></td>
+          <td><span class="score {{ 'mid' if row.strategy_score < 70 else '' }}">{{ row.strategy_score }}</span></td>
+          <td>{{ row.high_value_mentions }}</td>
+          <td>{{ row.prospects }}</td>
+          <td>{{ row.trial_sent }}</td>
+          <td>{{ row.won }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <div class="card card-body" style="margin-bottom: 14px"><strong>观察/降权关键词</strong></div>
+    <table class="table table-vcenter card-table">
+      <thead>
+        <tr>
+          <th>关键词</th>
+          <th>线索</th>
+          <th>高价值</th>
+          <th>客户</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in board.weak_keywords %}
+        <tr>
+          <td><strong>{{ row.keyword }}</strong></td>
+          <td>{{ row.mentions }}</td>
+          <td>{{ row.high_value_mentions }}</td>
+          <td>{{ row.prospects }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<div class="detail-grid" style="margin-bottom: 18px">
+  <section>
+    <div class="card card-body" style="margin-bottom: 14px"><strong>加码来源</strong></div>
+    <table class="table table-vcenter card-table">
+      <thead>
+        <tr>
+          <th>来源</th>
+          <th>质量</th>
+          <th>高价值</th>
+          <th>客户</th>
+          <th>测试</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in board.top_sources %}
+        <tr>
+          <td>
+            <strong>{{ row.source_name }}</strong>
+            <div class="muted">{{ row.source_kind }}</div>
+          </td>
+          <td><span class="score {{ 'mid' if row.quality_score < 80 else '' }}">{{ row.quality_score }}</span></td>
+          <td>{{ row.high_value_mentions }}</td>
+          <td>{{ row.prospects }}</td>
+          <td>{{ row.trial_sent }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <div class="card card-body" style="margin-bottom: 14px"><strong>低产来源</strong></div>
+    <table class="table table-vcenter card-table">
+      <thead>
+        <tr>
+          <th>来源</th>
+          <th>线索</th>
+          <th>高价值</th>
+          <th>客户</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in board.weak_sources %}
+        <tr>
+          <td>
+            <strong>{{ row.source_name }}</strong>
+            <div class="muted">{{ row.source_kind }}</div>
+          </td>
+          <td>{{ row.mentions }}</td>
+          <td>{{ row.high_value_mentions }}</td>
+          <td>{{ row.prospects }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<section class="card card-body" style="margin-bottom: 14px">
+  <strong>下一轮扩词候选</strong>
+  <div class="muted">候选词围绕海外动态住宅 IP 的高意图场景，加入后会参与后续采集和评分。</div>
+</section>
+<table class="table table-vcenter card-table" style="margin-bottom: 18px">
+  <thead>
+    <tr>
+      <th>候选词</th>
+      <th>优先级</th>
+      <th>分类</th>
+      <th>建议权重</th>
+      <th>原因</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in board.keyword_suggestions[:10] %}
+    <tr>
+      <td><strong>{{ item.phrase }}</strong></td>
+      <td><span class="score {{ 'mid' if item.priority < 70 else '' }}">{{ item.priority }}</span></td>
+      <td>{{ item.category }}</td>
+      <td>{{ item.weight }}</td>
+      <td>{{ item.reason }}</td>
+      <td>
+        <form method="post" action="/keywords">
+          <input type="hidden" name="phrase" value="{{ item.phrase }}">
+          <input type="hidden" name="weight" value="{{ item.weight }}">
+          <input type="hidden" name="category" value="{{ item.category }}">
+          <button class="btn btn-sm btn-outline-secondary" type="submit">加入词库</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<section class="card card-body" style="margin-bottom: 14px">
+  <strong>下一轮来源候选</strong>
+  <div class="muted">由扩词候选生成，可直接加入采集来源。</div>
+</section>
+<table class="table table-vcenter card-table" style="margin-bottom: 18px">
+  <thead>
+    <tr>
+      <th>候选来源</th>
+      <th>优先级</th>
+      <th>类型</th>
+      <th>搜索词/地址</th>
+      <th>原因</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in board.source_suggestions[:12] %}
+    <tr>
+      <td><strong>{{ item.name }}</strong></td>
+      <td><span class="score {{ 'mid' if item.priority < 70 else '' }}">{{ item.priority }}</span></td>
+      <td>{{ item.kind }}</td>
+      <td class="muted clickable-text">{{ linkify(item.url) }}</td>
+      <td>{{ item.reason }}</td>
+      <td>
+        <form method="post" action="/sources">
+          <input type="hidden" name="name" value="{{ item.name }}">
+          <input type="hidden" name="kind" value="{{ item.kind }}">
+          <input type="hidden" name="url" value="{{ item.url }}">
+          <input type="hidden" name="enabled" value="on">
+          <button class="btn btn-sm btn-outline-secondary" type="submit">加入来源</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<section class="card card-body" style="margin-bottom: 14px">
+  <strong>高优先客户</strong>
+</section>
+<table class="table table-vcenter card-table">
+  <thead>
+    <tr>
+      <th>客户</th>
+      <th>分数</th>
+      <th>匹配</th>
+      <th>类型</th>
+      <th>状态</th>
+      <th>下一步</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for prospect in board.priority_prospects %}
+    <tr>
+      <td>
+        <a class="title-link" href="/prospects/{{ prospect.id }}">{{ prospect.display_name }}</a>
+        <div class="muted">{{ prospect.platform }}</div>
+      </td>
+      <td><span class="score">{{ prospect.lead_score }}</span></td>
+      <td>{{ product_fit_labels.get(prospect.product_fit, prospect.product_fit) }}</td>
+      <td>{{ customer_type_labels.get(prospect.customer_type, prospect.customer_type) }}</td>
+      <td>{{ prospect_status_labels.get(prospect.status, prospect.status) }}</td>
+      <td>{{ prospect.next_action or prospect.suggested_action }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">需求雷达</h1>
+    <div class="page-subtitle">大海捞针模式：只看公开社区、问答、论坛和社媒里的即时痛点信号，不把它当最终客户库。</div>
+  </div>
+  <div class="actions">
+    <a class="btn btn-sm btn-outline-secondary" href="/b2b-accounts">B2B 客户库</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/ops">作战台</a>
+  </div>
+</div>
+
+{% if message %}<section class="card card-body" style="margin-bottom:14px">{{ message }}</section>{% endif %}
+
+<section class="stats">
+  <div class="stat"><strong>{{ stats.signals }}</strong><span class="muted">痛点信号</span></div>
+  <div class="stat"><strong>{{ stats.a_signals }}</strong><span class="muted">A 类信号</span></div>
+  <div class="stat"><strong>{{ stats.risk }}</strong><span class="muted">风险/需审核</span></div>
+  <div class="stat"><strong>{{ stats.converted }}</strong><span class="muted">已关联客户</span></div>
+</section>
+
+<section class="card card-body">
+  <div class="toolbar">
+    <div>
+      <div class="section-title">Signal 池</div>
+      <div class="muted" style="margin-top:4px">高分不等于直接触达；先确认场景、合规和联系方式。</div>
+    </div>
+    <form method="get" action="/demand-radar" class="actions">
+      <select class="form-select form-select-sm" name="status">
+        <option value="all" {% if filters.status == "all" %}selected{% endif %}>全部状态</option>
+        {% for key, label in status_labels.items() %}
+        <option value="{{ key }}" {% if filters.status == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select class="form-select form-select-sm" name="risk">
+        <option value="all" {% if filters.risk == "all" %}selected{% endif %}>全部风险</option>
+        <option value="normal" {% if filters.risk == "normal" %}selected{% endif %}>低风险</option>
+        <option value="high" {% if filters.risk == "high" %}selected{% endif %}>高风险</option>
+      </select>
+      <input class="form-control form-control-sm" name="min_score" type="number" min="0" max="100" value="{{ filters.min_score }}" style="width:86px">
+      <button class="btn btn-sm btn-primary" type="submit">筛选</button>
+    </form>
+  </div>
+
+  <div class="card table-responsive">
+    <table class="table table-vcenter card-table">
+      <colgroup>
+        <col style="width:90px">
+        <col style="width:340px">
+        <col style="width:170px">
+        <col style="width:220px">
+        <col style="width:110px">
+        <col style="width:110px">
+        <col style="width:110px">
+        <col style="width:110px">
+        <col style="width:260px">
+        <col style="width:160px">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>优先级</th>
+          <th>信号</th>
+          <th>来源</th>
+          <th>关键词/类型</th>
+          <th>Fit</th>
+          <th>Intent</th>
+          <th>Contact</th>
+          <th>Risk</th>
+          <th>建议</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td><span class="score {{ 'mid' if row.priority_score < 70 else '' }}">{{ row.priority_score }}</span></td>
+          <td>
+            <a class="title-link clamp-2" href="/mentions/{{ row.id }}">{{ row.title }}</a>
+            <div class="muted clamp-2">{{ row.content or "-" }}</div>
+            <a href="{{ row.canonical_url }}" target="_blank">原文</a>
+          </td>
+          <td>
+            <strong>{{ row.source_name }}</strong>
+            <div class="muted">{{ row.author or "-" }}</div>
+            <div class="muted">{{ row.discovered_at }}</div>
+          </td>
+          <td>
+            <span class="pill">{{ signal_labels.get(row.signal_type, row.signal_type) }}</span>
+            <div class="muted clamp-3">{{ row.matched_keywords or "-" }}</div>
+          </td>
+          <td><span class="score low">{{ row.fit_score }}</span></td>
+          <td><span class="score low">{{ row.intent_score }}</span></td>
+          <td><span class="score low">{{ row.contact_score }}</span></td>
+          <td><span class="score {{ 'mid' if row.risk_score >= 50 else 'low' }}">{{ row.risk_score }}</span></td>
+          <td>
+            <div class="clamp-3" title="{{ row.recommendation }}">{{ row.recommendation }}</div>
+            <div class="muted clamp-2">{{ row.score_reasons }}</div>
+          </td>
+          <td>
+            <form method="post" action="/demand-radar/action" class="actions">
+              <input type="hidden" name="mention_id" value="{{ row.id }}">
+              <input type="hidden" name="status" value="{{ filters.status }}">
+              <input type="hidden" name="risk" value="{{ filters.risk }}">
+              <input type="hidden" name="min_score" value="{{ filters.min_score }}">
+              <button class="btn btn-sm btn-outline-secondary" name="action" value="qualify" type="submit">可跟进</button>
+              <button class="btn btn-sm btn-outline-secondary" name="action" value="rebuild_company" type="submit">合并B2B</button>
+              <button class="btn btn-sm btn-outline-danger" name="action" value="risk" type="submit">风险</button>
+              <button class="btn btn-sm btn-outline-danger" name="action" value="noise" type="submit">噪音</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" class="muted">暂无符合条件的需求信号。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

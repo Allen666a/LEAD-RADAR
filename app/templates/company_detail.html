@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ company.company_name or company.domain or company.company_key }}</h1>
+    <div class="page-subtitle">B2B 公司画像：公司级信号、联系方式、关联线索和跟进活动。</div>
+  </div>
+  <div class="actions">
+    <a class="btn btn-sm btn-outline-secondary" href="/b2b-accounts">返回客户库</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/contact-workbench?platform=all&mode=missing&min_score=0">补联系方式</a>
+  </div>
+</div>
+
+{% if message %}<section class="card card-body" style="margin-bottom:14px">{{ message }}</section>{% endif %}
+
+<section class="stats">
+  <div class="stat"><strong>{{ company.priority_score }}</strong><span class="muted">Priority</span></div>
+  <div class="stat"><strong>{{ company.fit_score }}</strong><span class="muted">Fit</span></div>
+  <div class="stat"><strong>{{ company.intent_score }}</strong><span class="muted">Intent</span></div>
+  <div class="stat"><strong>{{ company.contact_score }}</strong><span class="muted">Contact</span></div>
+</section>
+
+<div class="detail-grid">
+  <section class="card card-body">
+    <div class="section-title">公司画像</div>
+    <table class="table table-vcenter card-table" style="margin-top:12px">
+      <tbody>
+        <tr><th>官网</th><td>{% if company.website %}<a href="{{ company.website }}" target="_blank">{{ company.website }}</a>{% else %}-{% endif %}</td></tr>
+        <tr><th>域名</th><td>{{ company.domain or "-" }}</td></tr>
+        <tr><th>地区</th><td>{{ company.country or company.region or "-" }}</td></tr>
+        <tr><th>客户类型</th><td>{{ customer_type_labels.get(company.customer_type, company.customer_type) }}</td></tr>
+        <tr><th>联系方式状态</th><td>{{ company.contact_status }}</td></tr>
+        <tr><th>CRM 状态</th><td>{{ company.crm_status }}</td></tr>
+        <tr><th>需求理由</th><td><div class="content-box">{{ company.need_reason or "-" }}</div></td></tr>
+        <tr><th>下一步</th><td><div class="content-box">{{ company.next_action or "-" }}</div></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card card-body">
+    <div class="section-title">联系方式</div>
+    <div style="margin-top:12px">
+      {% for contact in detail.contacts %}
+      <div class="cell-block">
+        <strong>{{ contact.contact_type }}</strong>
+        <div class="contact-line clickable-text" title="{{ contact.value }}">{{ linkify(contact.value) }}</div>
+        <div class="muted">置信度 {{ contact.confidence }} · {{ contact.status }}</div>
+        {% if contact.source_url %}<div class="clickable-text"><a href="{{ contact.source_url }}" target="_blank" rel="noreferrer">来源</a> · {{ linkify(contact.source_url) }}</div>{% endif %}
+        {% if contact.note %}<div class="muted clickable-text">{{ linkify(contact.note) }}</div>{% endif %}
+      </div>
+      {% else %}
+      <div class="muted">暂无联系方式。</div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+
+<section class="card card-body" style="margin-top:16px">
+  <div class="toolbar">
+    <div>
+      <div class="section-title">意图信号</div>
+      <div class="muted" style="margin-top:4px">公司级证据来源，销售判断不能只看一个总分。</div>
+    </div>
+  </div>
+  <div class="signal-queue" style="margin-top:12px">
+    {% for signal in detail.signals %}
+    <article class="signal-card">
+      <div>
+        <span class="score">{{ signal.score }}</span>
+        <div class="muted mt-2">{{ signal.signal_type }}</div>
+      </div>
+      <div class="signal-text">
+        {% if signal.url %}
+        <a class="signal-title" href="{{ signal.url }}" target="_blank" rel="noreferrer">{{ signal.title }}</a>
+        {% else %}
+        <div class="signal-title">{{ signal.title }}</div>
+        {% endif %}
+        {% if signal.content_snippet %}<div class="muted mt-2">{{ linkify(signal.content_snippet) }}</div>{% endif %}
+      </div>
+      <div class="signal-text">
+        <div class="signal-section-title">来源</div>
+        <div>{{ signal.source_name }}</div>
+        <div class="muted">{{ signal.source_kind }}</div>
+        {% if signal.url %}<div class="mt-2 clickable-text">{{ linkify(signal.url) }}</div>{% endif %}
+      </div>
+      <div class="signal-text">
+        <div class="signal-section-title">原因 / 时间</div>
+        <div>{{ signal.reason or "-" }}</div>
+        <div class="muted mt-2">{{ format_dt(signal.detected_at or signal.created_at) }}</div>
+      </div>
+    </article>
+    {% else %}
+    <div class="empty-state">暂无公司级信号。</div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card card-body" style="margin-top:16px">
+  <div class="section-title">关联线索</div>
+  <div class="card table-responsive" style="margin-top:12px">
+    <table class="table table-vcenter card-table">
+      <thead>
+        <tr><th>客户</th><th>平台</th><th>分数</th><th>状态</th><th>证据</th><th>入口</th></tr>
+      </thead>
+      <tbody>
+        {% for prospect in detail.prospects %}
+        <tr>
+          <td><a class="title-link" href="/prospects/{{ prospect.id }}">{{ prospect.display_name }}</a></td>
+          <td>{{ prospect.platform }}</td>
+          <td><span class="score">{{ prospect.priority_score or prospect.lead_score }}</span></td>
+          <td>{{ prospect_status_labels.get(prospect.status, prospect.status) }}</td>
+          <td><div class="content-box">{{ linkify(prospect.evidence) }}</div></td>
+          <td>{% if prospect.profile_url %}<a href="{{ prospect.profile_url }}" target="_blank">主页</a>{% endif %}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="muted">暂无关联线索。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card card-body" style="margin-top:16px">
+  <div class="section-title">跟进活动</div>
+  <div style="margin-top:12px">
+    {% for activity in detail.activities %}
+    <div class="cell-block">
+      <strong>{{ activity.activity_type }}</strong>
+      <span class="muted">{{ activity.created_at }} · {{ activity.channel }} · {{ activity.status }}</span>
+      <div class="content-box">{{ activity.note or activity.message or "-" }}</div>
+    </div>
+    {% else %}
+    <div class="muted">暂无跟进活动。</div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

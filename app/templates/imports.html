@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card card-body" style="margin-bottom: 14px">
+  <strong>国内获客导入</strong>
+  <div class="muted">用于微信群、QQ群、小红书、抖音、知乎、飞书群、展会名片、人工整理表格等国内线索。适合不能公开抓取或需要登录的平台。</div>
+  {% if message %}
+  <div class="pill good" style="margin-top:10px">{{ message }}</div>
+  {% endif %}
+  <div class="actions" style="margin-top:10px">
+    <a class="btn btn-sm btn-outline-secondary" href="/imports/sample.csv">下载 CSV 模板</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/pipeline">查看跟进池</a>
+  </div>
+</div>
+
+<form class="card card-body" method="post" action="/imports/prospects" enctype="multipart/form-data" style="margin-bottom: 14px">
+  <strong>上传线索 CSV</strong>
+  <div class="actions" style="margin-top:10px">
+    <input class="form-control form-control-sm" type="file" name="file" accept=".csv" required>
+    <button class="btn btn-primary btn-sm" type="submit">导入客户画像</button>
+  </div>
+  <div class="muted" style="margin-top:8px">导入后会进入客户画像和跟进池，系统会生成产品匹配、客户类型、分数、话术和下一步建议。</div>
+</form>
+
+<section class="card card-body" style="margin-bottom: 14px">
+  <strong>推荐字段</strong>
+  <div class="muted">最少填 platform、display_name、evidence；有微信、主页、地区、公司名会更适合跟进。</div>
+</section>
+<table class="table table-vcenter card-table">
+  <thead>
+    <tr>
+      <th>字段</th>
+      <th>说明</th>
+      <th>例子</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>platform</td><td>来源平台</td><td>微信群 / 小红书 / 抖音 / 知乎 / QQ群 / 飞书群</td></tr>
+    <tr><td>display_name</td><td>客户或线索名称</td><td>TikTok 小店矩阵团队</td></tr>
+    <tr><td>profile_url</td><td>主页或原帖链接</td><td>公开主页 URL</td></tr>
+    <tr><td>wechat</td><td>微信号</td><td>example_wechat</td></tr>
+    <tr><td>customer_type</td><td>客户类型，可留空自动判断</td><td>tiktok_matrix / cross_border_seller / crawler_data</td></tr>
+    <tr><td>product_fit</td><td>产品匹配，可留空自动判断</td><td>direct_dynamic_residential / scenario_fit</td></tr>
+    <tr><td>evidence</td><td>为什么判断他有需求</td><td>群里询问 TikTok 多账号防关联，当前 IP 经常触发风控</td></tr>
+    <tr><td>next_action</td><td>下一步动作</td><td>加微信确认账号规模、目标国家和当前代理方案</td></tr>
+  </tbody>
+</table>
+
+<section class="card card-body" style="margin-top: 18px">
+  <strong>国内获客渠道边界</strong>
+  <div class="muted">公开讨论源走监控；登录、私域、半封闭平台走人工导入。这样更稳，也更接近真实获客流程。</div>
+</section>
+{% endblock %}

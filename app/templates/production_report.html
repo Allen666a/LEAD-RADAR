@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">生产验收报告</h1>
+  <div class="page-subtitle">判断这个工具现在能不能实战获客：看规模、时效、来源、线索质量和今天该做什么。</div>
+</div>
+
+<section class="card card-body mb-3">
+  <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+      <div class="text-secondary">当前结论</div>
+      <h2 class="m-0">{{ report.readiness }}</h2>
+    </div>
+    <div class="btn-list">
+      <form method="post" action="/production-collect" style="margin:0">
+        <input type="hidden" name="source_limit" value="200">
+        <button class="btn btn-primary" type="submit">启动生产采集</button>
+      </form>
+      <a class="btn btn-outline-secondary" href="/production-report.csv?sample_limit=100">导出线索 CSV</a>
+      <span class="pill {{ report.readiness_class }}">{{ report.readiness_class }}</span>
+    </div>
+  </div>
+</section>
+
+<div class="home-source-grid mb-3">
+  {% for item in report.summary %}
+  <div class="home-source-card">
+    <strong>{{ item.value }}</strong>
+    <span>{{ item.label }}</span>
+    <em>{{ item.note }}</em>
+  </div>
+  {% endfor %}
+</div>
+
+<section class="home-panel">
+  <div class="home-panel-head">
+    <div>
+      <h2>获客漏斗</h2>
+      <p>候选池负责海量，线索池负责可行动。不要只看最终线索数，要看每层损耗。</p>
+    </div>
+    <a class="btn btn-sm btn-outline-secondary" href="/quality-audit">质量验收</a>
+  </div>
+  <div class="home-source-grid">
+    {% for item in report.funnel %}
+    <div class="home-source-card">
+      <strong>{{ item.value }}</strong>
+      <span>{{ item.label }}</span>
+      <em>{{ item.note }}</em>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="home-panel">
+  <div class="home-panel-head">
+    <div>
+      <h2>今天该做什么</h2>
+      <p>只列实用动作，不做鸡肋功能。</p>
+    </div>
+  </div>
+  <ol class="mb-0">
+    {% for item in report.actions %}
+    <li>{{ item }}</li>
+    {% endfor %}
+  </ol>
+</section>
+
+<section class="home-grid">
+  <div class="home-panel">
+    <div class="home-panel-head">
+      <div>
+        <h2>高产来源</h2>
+        <p>优先继续扩展和观察这些来源。</p>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table">
+        <thead><tr><th>来源</th><th>质量</th><th>最近抓取</th><th>入库</th></tr></thead>
+        <tbody>
+        {% for row in report.source_rows %}
+        <tr>
+          <td><strong>{{ row.name }}</strong><div class="muted">{{ row.kind }}</div></td>
+          <td>{{ row.quality }} / {{ row.score }}</td>
+          <td>{{ row.fetched }}</td>
+          <td>{{ row.inserted }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="home-panel">
+    <div class="home-panel-head">
+      <div>
+        <h2>低产/受阻来源</h2>
+        <p>连续低产后再降权，不要马上误删。</p>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table">
+        <thead><tr><th>来源</th><th>质量</th><th>最近抓取</th><th>错误</th></tr></thead>
+        <tbody>
+        {% for row in report.weak_source_rows %}
+        <tr>
+          <td><strong>{{ row.name }}</strong><div class="muted">{{ row.kind }}</div></td>
+          <td>{{ row.quality }} / {{ row.score }}</td>
+          <td>{{ row.fetched }} / 入库 {{ row.inserted }}</td>
+          <td>{{ row.last_error or "-" }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="home-grid">
+  <div class="home-panel">
+    <div class="home-panel-head"><h2>过滤原因</h2></div>
+    <div class="d-flex flex-wrap gap-2">
+      {% for row in report.failure_rows %}
+      <span class="badge bg-yellow-lt">{{ row.label }} {{ row.count }}</span>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="home-panel">
+    <div class="home-panel-head"><h2>客户类型</h2></div>
+    <div class="d-flex flex-wrap gap-2">
+      {% for row in report.customer_rows %}
+      <span class="badge bg-blue-lt">{{ row.label }} {{ row.count }}</span>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="home-panel">
+  <div class="home-panel-head">
+    <div>
+      <h2>前 50 条优先线索样本</h2>
+      <p>生产验收重点看这里：是不是人、是不是 2026、是不是动态住宅 IP 场景、下一步能不能联系。</p>
+    </div>
+    <a class="btn btn-sm btn-primary" href="/leads?segment=all&scope=all&pool=usable&min_score=0">进入线索池</a>
+  </div>
+  <div class="home-lead-list">
+    {% for row in report.top_leads %}
+    <a class="home-lead" href="/mentions/{{ row.id }}">
+      <strong>{{ row.score }}</strong>
+      <span>
+        <b>{{ row.title }}</b>
+        <small>{{ row.source }} · {{ row.platform }} · {{ format_dt(row.published_at) }}</small>
+        <small>{{ row.why }}</small>
+      </span>
+      <em>{{ row.next_step }}</em>
+    </a>
+    {% else %}
+    <div class="home-empty">暂无可验收线索，先跑全源自动采集。</div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

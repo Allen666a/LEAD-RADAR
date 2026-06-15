@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block content %}
+{% if message %}
+<div class="alert alert-success">{{ message }}</div>
+{% endif %}
+<div class="card card-body" style="margin-bottom: 14px">
+  <strong>监控源</strong>
+  <div class="muted">默认可以全量启用来源，质量过滤放在线索池和候选池处理；审计只更新质量评分，不再自动停用。</div>
+  <div class="actions" style="margin-top:10px">
+    <form method="post" action="/sources/enable-all" style="margin:0">
+      <button class="btn btn-sm btn-primary" type="submit">启用全部来源</button>
+    </form>
+    <form method="post" action="/audit-sources" style="margin:0">
+      <button class="btn btn-sm btn-outline-secondary" type="submit">重新审计来源</button>
+    </form>
+  </div>
+</div>
+
+<form class="card card-body" method="post" action="/sources" style="margin-bottom: 14px">
+  <strong>新增监控源</strong>
+  <div class="actions" style="margin-top:10px">
+    <input class="form-control form-control-sm" name="name" placeholder="例如 GitHub Issues: TikTok IP 防关联" style="min-width:280px" required>
+    <select class="form-select form-select-sm" name="kind">
+      <option value="github_search">github_search</option>
+      <option value="gitee_search">gitee_search</option>
+      <option value="html_links">html_links</option>
+      <option value="rss">rss</option>
+      <option value="rsshub">rsshub</option>
+      <option value="v2ex_node">v2ex_node</option>
+      <option value="v2ex_hot">v2ex_hot</option>
+    </select>
+    <input class="form-control form-control-sm" name="url" placeholder="搜索词或 URL" style="min-width:320px">
+    <label class="pill"><input class="form-check-input" name="enabled" type="checkbox" checked> 启用</label>
+    <button class="btn btn-primary btn-sm" type="submit">添加</button>
+  </div>
+</form>
+
+<section class="card card-body" style="margin-bottom: 14px">
+  <strong>来源候选</strong>
+  <div class="muted">从扩词候选生成，只包含 Issue、问答、社区搜索等公开讨论源，不接新闻源。</div>
+</section>
+<div class="card table-responsive">
+<table class="table table-vcenter card-table source-candidate-table">
+  <colgroup>
+    <col><col><col><col><col><col>
+  </colgroup>
+  <thead>
+    <tr>
+      <th>候选来源</th>
+      <th>优先级</th>
+      <th>类型</th>
+      <th>搜索词/地址</th>
+      <th>原因</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in source_suggestions %}
+    <tr>
+      <td><strong>{{ item.name }}</strong></td>
+      <td><span class="score {{ 'mid' if item.priority < 70 else '' }}">{{ item.priority }}</span></td>
+      <td>{{ item.kind }}</td>
+      <td class="muted clickable-text">{{ linkify(item.url) }}</td>
+      <td>{{ item.reason }}</td>
+      <td>
+        <form method="post" action="/sources">
+          <input type="hidden" name="name" value="{{ item.name }}">
+          <input type="hidden" name="kind" value="{{ item.kind }}">
+          <input type="hidden" name="url" value="{{ item.url }}">
+          <input type="hidden" name="enabled" value="on">
+          <button class="btn btn-sm btn-outline-secondary" type="submit">加入来源</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<div class="card table-responsive">
+<table class="table table-vcenter card-table source-table">
+  <colgroup>
+    <col><col><col><col><col><col><col><col><col><col><col>
+  </colgroup>
+  <thead>
+    <tr>
+      <th>名称</th>
+      <th>类型</th>
+      <th>地址</th>
+      <th>状态</th>
+      <th>质量</th>
+      <th>最近采集</th>
+      <th>成功/失败</th>
+      <th>抓取/入库</th>
+      <th>信号贡献</th>
+      <th>最近错误</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in sources %}
+    <tr>
+      <td>{{ row.name }}</td>
+      <td>{{ row.kind }}</td>
+      <td class="muted"><div class="clickable-text" title="{{ row.url or '-' }}">{{ linkify(row.url or "-") }}</div></td>
+      <td>{{ "启用" if row.enabled else "停用" }}</td>
+      <td>
+        {% set quality = row.quality_status or "unchecked" %}
+        <span class="pill {{ source_quality_classes.get(quality, '') }}">{{ source_quality_labels.get(quality, quality) }}</span>
+        <span class="pill">{{ row.quality_score or 0 }}</span>
+        <div class="muted clamp-3" title="{{ row.quality_reason or '-' }}">{{ row.quality_reason or "-" }}</div>
+        {% if row.auto_disabled_at %}
+        <div class="muted">自动暂停：{{ row.auto_disabled_at.strftime("%Y-%m-%d %H:%M") }}</div>
+        {% endif %}
+      </td>
+      <td class="muted">
+        {{ row.last_checked_at.strftime("%Y-%m-%d %H:%M") if row.last_checked_at else "-" }}
+        {% if row.next_collect_at %}
+        <div class="muted">下次 {{ row.next_collect_at.strftime("%Y-%m-%d %H:%M") }}</div>
+        {% endif %}
+        {% if row.cooldown_until %}
+        <div class="muted">冷却到 {{ row.cooldown_until.strftime("%Y-%m-%d %H:%M") }}</div>
+        {% endif %}
+        {% if row.last_run_reason %}
+        <div class="muted clamp-3" title="{{ row.last_run_reason }}">{{ row.last_run_reason }}</div>
+        {% endif %}
+      </td>
+      <td>{{ row.success_count or 0 }} / {{ row.failure_count or 0 }}{% if row.consecutive_failures %}<div class="muted">连续失败 {{ row.consecutive_failures }}</div>{% endif %}</td>
+      <td>{{ row.last_fetched_count or 0 }} / {{ row.last_inserted_count or 0 }}</td>
+      <td>
+        {% set metrics = source_metrics.get(row.name, {}) %}
+        <span class="pill good">高价值 {{ metrics.get("high_value", 0) }}</span>
+        <span class="pill warn">审核 {{ metrics.get("risk", 0) }}</span>
+        <span class="pill">总 {{ metrics.get("total", 0) }}</span>
+      </td>
+      <td class="muted"><div class="clamp-3" title="{{ row.last_error or '-' }}">{{ row.last_error or "-" }}</div></td>
+      <td>
+        <form method="post" action="/sources/{{ row.id }}/toggle" style="margin:0">
+          <button class="{{ 'danger' if row.enabled else '' }} btn btn-sm btn-outline-secondary" type="submit">{{ "停用" if row.enabled else "启用" }}</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="home-page">
+  {% if message %}
+  <div class="alert alert-success">{{ message }}</div>
+  {% endif %}
+
+  <section class="home-focus">
+    <div class="home-focus-main">
+      <p class="eyebrow">工作台</p>
+      <h1>点一次，自动从各类信息源找线索</h1>
+      <p>系统会优先跑专业平台、跨境卖家社区、技术社区和公开搜索源；抖音、小红书、微博这类平台只是补充源，不是主战场。</p>
+      <div class="home-primary-actions">
+        <form method="post" action="/auto-collect" class="m-0">
+          <input type="hidden" name="source_limit" value="0">
+          <input type="hidden" name="session_platform_limit" value="3">
+          <button class="btn btn-primary btn-lg" type="submit">
+            <i class="ti ti-bolt me-1"></i>自动采集
+          </button>
+        </form>
+        <a class="btn btn-outline-secondary btn-lg" href="/leads?segment=all&scope=all&pool=usable&min_score=0">
+          <i class="ti ti-search me-1"></i>查看线索池
+        </a>
+        <a class="btn btn-outline-secondary btn-lg" href="/session-collector">
+          <i class="ti ti-login-2 me-1"></i>检查采集
+        </a>
+      </div>
+      <div class="home-collect-status">
+        <strong>{{ collector.state_label }}</strong>
+        <span>读取 {{ collector.fetched }}</span>
+        <span>入库 {{ collector.inserted }}</span>
+        <span>高意向 {{ collector.high_quality }}</span>
+        <span>{{ collector.updated_at or "暂无运行时间" }}</span>
+      </div>
+    </div>
+    <aside class="home-focus-side">
+      <div><strong>{{ board.fresh_leads }}</strong><span>2026 年线索</span></div>
+      <div><strong>{{ board.high_score_leads }}</strong><span>高分线索</span></div>
+      <div><strong>{{ board.missing_contact_count }}</strong><span>待补联系方式</span></div>
+      <div><strong>{{ board.blocked_platforms }}</strong><span>平台需处理</span></div>
+    </aside>
+  </section>
+
+  <section class="home-panel">
+    <div class="home-panel-head">
+      <div>
+        <h2>采集漏斗</h2>
+        <p>先把数据尽量抓进候选池，再按时间、广告、真实需求和联系方式分层筛选。线索池少，不代表没抓到，而是被过滤或等待复核。</p>
+      </div>
+      <a class="btn btn-sm btn-outline-secondary" href="/candidates?status=all">查看候选池</a>
+    </div>
+    <div class="home-source-grid">
+      <div class="home-source-card">
+        <strong>{{ board.funnel.candidates }}</strong>
+        <span>候选池总量</span>
+        <em>所有来源抓到的原始入口</em>
+      </div>
+      <div class="home-source-card">
+        <strong>{{ board.funnel.fresh_candidates }}</strong>
+        <span>2026 候选</span>
+        <em>符合当前时效要求</em>
+      </div>
+      <div class="home-source-card">
+        <strong>{{ board.funnel.usable_mentions }}</strong>
+        <span>可用线索</span>
+        <em>进入线索池或待复核</em>
+      </div>
+      <div class="home-source-card">
+        <strong>{{ board.funnel.review_candidates }}</strong>
+        <span>待复核候选</span>
+        <em>可能是真需求，证据不足</em>
+      </div>
+      <div class="home-source-card">
+        <strong>{{ board.funnel.rejected_candidates }}</strong>
+        <span>已过滤候选</span>
+        <em>旧内容、广告、弱意向、无时间</em>
+      </div>
+      <div class="home-source-card">
+        <strong>{{ board.funnel.high_score_mentions }}</strong>
+        <span>高分线索</span>
+        <em>优先补联系方式和跟进</em>
+      </div>
+    </div>
+  </section>
+
+  <section class="home-next">
+    <div>
+      <span>推荐下一步</span>
+      <strong>自动采集后看线索池</strong>
+      <p>采集只是入口，真正判断客户价值在“线索池”：时间、场景、客户类型、联系方式缺口都会在那里展示。</p>
+    </div>
+    <a class="btn btn-primary" href="/leads?segment=all&scope=all&pool=usable&min_score=0">
+      <i class="ti ti-search me-1"></i>进入线索池
+    </a>
+  </section>
+
+  <section class="home-mini-flow" aria-label="获客流程">
+    <a class="active" href="/"><b>1</b><span>自动采集</span></a>
+    <a href="/leads?segment=all&scope=all&pool=usable&min_score=0"><b>2</b><span>线索池</span></a>
+    <a href="/contact-workbench?mode=missing&platform=domestic&min_score=50"><b>3</b><span>补联系</span></a>
+    <a href="/pipeline"><b>4</b><span>跟进</span></a>
+  </section>
+
+  <section class="home-panel">
+    <div class="home-panel-head">
+      <div>
+        <h2>采集覆盖源</h2>
+        <p>默认跑全部来源，低质和广告在线索池过滤；来源页可以一键恢复所有被自动停用的源。</p>
+      </div>
+      <div class="actions">
+        <form method="post" action="/sources/enable-all" style="margin:0">
+          <button class="btn btn-sm btn-primary" type="submit">启用全部来源</button>
+        </form>
+        <a class="btn btn-sm btn-outline-secondary" href="/sources">管理来源</a>
+      </div>
+    </div>
+    <div class="home-source-grid">
+      {% for row in board.source_coverage %}
+      <div class="home-source-card {{ row.key }}">
+        <strong>{{ row.label }}</strong>
+        <span>{{ row.description }}</span>
+        <em>{{ row.enabled }} / {{ row.total }} 个启用</em>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="home-grid">
+    <div class="home-panel">
+      <div class="home-panel-head">
+        <div>
+          <h2>线索预览</h2>
+          <p>这里展示当前最值得看的几条，完整列表在“线索池”。</p>
+        </div>
+        <a class="btn btn-sm btn-primary" href="/leads?segment=all&scope=all&pool=usable&min_score=0">进入线索池</a>
+      </div>
+      <div class="home-lead-list">
+        {% for row in board.top_leads %}
+        <a class="home-lead" href="{{ row.href }}">
+          <strong>{{ row.score }}</strong>
+          <span>
+            <b>{{ row.title }}</b>
+            <small>{{ row.platform }} · {{ row.customer_type }} · {{ row.time_label }}</small>
+          </span>
+          <em>{{ row.next_step }}</em>
+        </a>
+        {% else %}
+        <div class="home-empty">
+          <strong>暂无今日优先目标</strong>
+          <span>先跑一轮国内线索，或放宽最低分查看是否有可用需求。</span>
+          <div>
+            <a class="btn btn-sm btn-primary" href="/leads?segment=all&scope=all&pool=usable&min_score=0">去找线索</a>
+            <a class="btn btn-sm btn-outline-secondary" href="/leads?segment=all&scope=all&pool=usable&min_score=0">查看全部</a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <aside class="home-panel">
+      <div class="home-panel-head">
+        <div>
+          <h2>怎么看线索</h2>
+          <p>先看这三个判断。</p>
+        </div>
+      </div>
+      <div class="home-rules">
+        <div><strong>时间</strong><span>只看 2026 年后的线索，旧帖不优先处理。</span></div>
+        <div><strong>场景</strong><span>必须和动态住宅 IP、防关联、多账号、爬虫采集相关。</span></div>
+        <div><strong>动作</strong><span>高分但没联系方式的，先去补微信、QQ、Telegram 或邮箱。</span></div>
+      </div>
+    </aside>
+  </section>
+
+  {% if board.platform_alerts %}
+  <section class="home-panel">
+    <div class="home-panel-head">
+      <div>
+        <h2>平台需要处理</h2>
+        <p>这些问题会影响国内平台采集。先处理登录、验证、频控和低质过滤，再继续扩量。</p>
+      </div>
+      <a class="btn btn-sm btn-outline-secondary" href="/session-collector">平台登录</a>
+    </div>
+    <div class="home-alert-list">
+      {% for item in board.platform_alerts %}
+      <a class="home-alert" href="{{ item.href }}">
+        <strong>{{ item.label }}</strong>
+        <span>{{ item.problem }}</span>
+        <small>{{ item.next_step }}</small>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

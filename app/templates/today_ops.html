@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="today-page">
+  <section class="today-hero">
+    <div>
+      <div class="clean-eyebrow">DAILY OPS</div>
+      <h1>今日作战</h1>
+      <p>每天只处理最有价值的少量动作：补联系方式、首次触达、发测试包、到期复访和结果反馈。</p>
+    </div>
+    <div class="today-hero-actions">
+      <a class="btn btn-outline-secondary" href="/leads"><i class="ti ti-search"></i> 找线索</a>
+      <a class="btn btn-outline-secondary" href="/contact-workbench"><i class="ti ti-address-book"></i> 补联系方式</a>
+      <a class="btn btn-primary" href="/feedback"><i class="ti ti-refresh-dot"></i> 记录结果</a>
+    </div>
+  </section>
+
+  {% if message %}
+  <div class="alert alert-success today-message">{{ message }}</div>
+  {% endif %}
+
+  <section class="today-stats">
+    <div><strong>{{ board.stats.focus_count }}</strong><span>今天先做</span></div>
+    <div><strong>{{ board.stats.contactable_count }}</strong><span>可直接联系</span></div>
+    <div><strong>{{ board.stats.due_count }}</strong><span>到期/测后</span></div>
+    <div><strong>{{ "%.0f%%"|format(board.stats.feedback_coverage * 100) }}</strong><span>反馈覆盖</span></div>
+  </section>
+
+  <form method="get" action="/today" class="today-filter">
+    <label>
+      <span>任务类型</span>
+      <select name="mode">
+        <option value="today" {% if filters.mode == "today" %}selected{% endif %}>今天要处理</option>
+        <option value="first_touch" {% if filters.mode == "first_touch" %}selected{% endif %}>第一次联系</option>
+        <option value="follow_up_due" {% if filters.mode == "follow_up_due" %}selected{% endif %}>到期复访</option>
+        <option value="send_trial" {% if filters.mode == "send_trial" %}selected{% endif %}>发送测试</option>
+        <option value="trial_follow_up" {% if filters.mode == "trial_follow_up" %}selected{% endif %}>测试后跟进</option>
+        <option value="contact_enrich" {% if filters.mode == "contact_enrich" %}selected{% endif %}>缺联系方式</option>
+        <option value="all" {% if filters.mode == "all" %}selected{% endif %}>全部</option>
+      </select>
+    </label>
+    <label>
+      <span>平台</span>
+      <select name="platform">
+        <option value="domestic" {% if filters.platform == "domestic" %}selected{% endif %}>国内优先</option>
+        <option value="all" {% if filters.platform == "all" %}selected{% endif %}>全部平台</option>
+        {% for item in platforms %}
+        <option value="{{ item }}" {% if filters.platform == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>最低分</span>
+      <input name="min_score" type="number" min="0" max="100" value="{{ filters.min_score }}">
+    </label>
+    <label>
+      <span>今天最多做</span>
+      <input name="daily_limit" type="number" min="1" max="8" value="{{ filters.daily_limit }}">
+    </label>
+    <button class="btn btn-primary" type="submit"><i class="ti ti-refresh"></i> 刷新</button>
+  </form>
+
+  <section class="today-panel">
+    <div class="today-section-head">
+      <div>
+        <h2>按顺序处理这几件事</h2>
+        <p>处理完就记录结果。系统会根据反馈调整关键词、来源和优先级。</p>
+      </div>
+      {% if board.backlog_count %}
+      <span>{{ board.backlog_count }} 个任务先放进队列</span>
+      {% endif %}
+    </div>
+
+    <div class="today-task-list">
+      {% for item in board.focus_tasks %}
+      {% set task = item.task %}
+      {% set prospect = task.prospect %}
+      {% set t = prospect_time(prospect) %}
+      <article class="today-task">
+        <div class="today-rank">
+          <strong>{{ loop.index }}</strong>
+          <span>{{ task.priority }}</span>
+        </div>
+        <div class="today-main">
+          <div class="today-title-row">
+            <a href="/prospects/{{ prospect.id }}">{{ item.display_name }}</a>
+            <span class="pill {{ 'good' if item.contact_label == '可触达' else 'warn' }}">{{ item.contact_label }}</span>
+          </div>
+          <div class="today-meta">
+            {{ item.task_label }} · {{ item.stage_label }} · {{ prospect.platform }} · {{ customer_type_labels.get(prospect.customer_type, prospect.customer_type) }} · 时效 {{ t.label }}
+          </div>
+          <p>{{ item.why }}</p>
+          <div class="today-evidence">{{ task.brief.account_summary }}</div>
+          <div class="today-checklist">
+            {% for check in task.checklist[:4] %}
+            <span>{{ loop.index }}. {{ check }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        <aside class="today-side">
+          <strong>怎么说 / 怎么做</strong>
+          <p>{{ task.message }}</p>
+          <em>{{ item.outcome_hint }}</em>
+          <div class="today-links">
+            <a class="btn btn-sm btn-outline-secondary" href="{{ item.primary_url }}">处理页面</a>
+            {% if prospect.profile_url %}
+            <a class="btn btn-sm btn-outline-secondary" href="{{ prospect.profile_url }}" target="_blank" rel="noreferrer">原文</a>
+            {% endif %}
+            <a class="btn btn-sm btn-outline-secondary" href="{{ item.secondary_url }}">详情</a>
+          </div>
+          <form method="post" action="/today/action" class="today-action-form">
+            <input type="hidden" name="prospect_id" value="{{ prospect.id }}">
+            <input type="hidden" name="mode" value="{{ filters.mode }}">
+            <input type="hidden" name="platform" value="{{ filters.platform }}">
+            <input type="hidden" name="min_score" value="{{ filters.min_score }}">
+            <input type="hidden" name="daily_limit" value="{{ filters.daily_limit }}">
+            <textarea name="note" placeholder="记录一句真实结果：对方说了什么、为什么继续/无效"></textarea>
+            <div class="today-action-buttons">
+              <button class="btn btn-sm btn-primary" name="action" value="{{ task.primary_action }}" type="submit">{{ task.primary_action_label }}</button>
+              <button class="btn btn-sm btn-outline-secondary" name="action" value="contacted" type="submit">已触达</button>
+              <button class="btn btn-sm btn-outline-secondary" name="action" value="trial_sent" type="submit">已发测试</button>
+              <button class="btn btn-sm btn-outline-secondary" name="action" value="schedule_3" type="submit">3天后</button>
+              <button class="btn btn-sm btn-outline-danger" name="action" value="invalid" type="submit">无效</button>
+            </div>
+          </form>
+        </aside>
+      </article>
+      {% else %}
+      <div class="today-empty">
+        今天没有可执行任务。先去找线索，或把最低分调低一点查看候选。
+        <div><a class="btn btn-primary" href="/leads">去找线索</a></div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="today-grid">
+    <div class="today-panel">
+      <div class="today-section-head">
+        <div>
+          <h2>采集阻塞</h2>
+          <p>这些问题会影响后续线索质量。</p>
+        </div>
+      </div>
+      <div class="today-mini-list">
+        {% for item in board.workbench.platform_issues[:5] %}
+        <div>
+          <span><strong>{{ item.label }}</strong><small>{{ item.failure_code or item.login_label }}</small></span>
+          <a href="/platforms">处理</a>
+        </div>
+        {% else %}
+        <p>暂无明显平台阻塞。</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="today-panel">
+      <div class="today-section-head">
+        <div>
+          <h2>学习反馈</h2>
+          <p>今天做完一定记录结果，否则系统无法变准。</p>
+        </div>
+      </div>
+      <div class="today-mini-list">
+        {% for item in board.workbench.feedback.recommendations[:5] %}
+        <div><span>{{ item }}</span></div>
+        {% else %}
+        <p>暂无反馈建议。</p>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

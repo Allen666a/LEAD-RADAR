@@ -1,0 +1,553 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">平台登录与后台采集</h1>
+    <div class="page-subtitle">
+      登录平台账号后，系统复用本地浏览器会话，后台低频采集公开搜索结果。只读取公开内容，不私信、不关注、不评论。
+    </div>
+  </div>
+  <div class="actions">
+    <a class="btn btn-sm btn-primary" href="#session-platform-tasks">登录国内平台</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/platforms">国内外平台矩阵</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/domestic-review">国内质检</a>
+  </div>
+</div>
+
+{% if message %}
+<div class="card card-body" style="margin-bottom:16px">
+  <span class="pill good">{{ message }}</span>
+</div>
+{% endif %}
+
+<div class="row row-cards mb-3">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card card-sm">
+      <div class="card-body">
+        <div class="row align-items-center">
+          <div class="col-auto"><span class="avatar bg-teal text-white"><i class="ti ti-login"></i></span></div>
+          <div class="col"><div class="h2 m-0">{{ session_flow.logged_in }}</div><div class="text-secondary">已登录平台</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card card-sm">
+      <div class="card-body">
+        <div class="row align-items-center">
+          <div class="col-auto"><span class="avatar bg-green text-white"><i class="ti ti-player-play"></i></span></div>
+          <div class="col"><div class="h2 m-0">{{ session_flow.ready }}</div><div class="text-secondary">可后台采集</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card card-sm">
+      <div class="card-body">
+        <div class="row align-items-center">
+          <div class="col-auto"><span class="avatar bg-yellow text-white"><i class="ti ti-alert-triangle"></i></span></div>
+          <div class="col"><div class="h2 m-0">{{ session_flow.blocked }}</div><div class="text-secondary">需要处理</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card card-sm">
+      <div class="card-body">
+        <div class="row align-items-center">
+          <div class="col-auto"><span class="avatar bg-blue text-white"><i class="ti ti-diamond"></i></span></div>
+          <div class="col"><div class="h2 m-0">{{ session_flow.high_value }}</div><div class="text-secondary">高价值结果</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="card card-body mb-3">
+  <div class="row align-items-center">
+    <div class="col">
+      <div class="text-secondary small">下一步</div>
+      <div class="fw-bold">{{ session_flow.next_step }}</div>
+    </div>
+    <div class="col-auto">
+      <a class="btn btn-primary btn-sm" href="{{ session_flow.next_url }}"><i class="ti ti-arrow-right me-1"></i>去处理</a>
+    </div>
+  </div>
+</section>
+
+<div class="step-grid">
+  <section class="card card-body">
+    <span class="step-number">1</span>
+    <strong>登录账号</strong>
+    <div class="muted">点“登录账号”会打开该平台浏览器窗口。登录完成后请关闭这个窗口，避免 profile 被占用。</div>
+  </section>
+  <section class="card card-body">
+    <span class="step-number">2</span>
+    <strong>检查状态</strong>
+    <div class="muted">关闭登录窗口后点“检查状态”。显示“已登录”后，再运行后台采集。</div>
+  </section>
+  <section class="card card-body">
+    <span class="step-number">3</span>
+    <strong>后台采集</strong>
+    <div class="muted">采集不会再弹新窗口。遇到验证码、登录失效、频控，会自动暂停并提示原因。</div>
+  </section>
+</div>
+
+<section id="session-batch-run" class="card card-body" style="margin-bottom:16px">
+  <div class="toolbar">
+    <div>
+      <strong>批量采集</strong>
+      <div class="muted" style="margin-top:4px">只建议在账号状态正常时使用。默认后台运行，不会打开新浏览器窗口。当前策略：{{ strategy_version }}</div>
+    </div>
+    <div class="actions">
+      <form method="post" action="/session-collector/tasks/sync" style="margin:0">
+        <button class="btn btn-sm btn-outline-secondary" type="submit">同步推荐任务</button>
+      </form>
+      <form method="post" action="/session-collector/run-all" class="actions session-run-form" style="margin:0">
+        <label class="muted">平台数</label>
+        <input class="form-control form-control-sm" name="platform_limit" type="number" min="1" max="6" value="2" style="width:76px">
+        <button class="btn btn-primary btn-sm" type="submit">后台批量采集</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section id="session-progress-card" class="card card-body" style="margin-bottom:16px">
+  <div class="toolbar">
+    <div>
+      <strong>当前运行状态</strong>
+      <div id="session-progress-meta" class="muted" style="margin-top:4px">
+        {{ session_progress.updated_at or "暂无运行时间" }} · {{ session_progress.state }}
+        {% if session_progress.platform %} · {{ platform_labels.get(session_progress.platform, session_progress.platform) }}{% endif %}
+        {% if session_progress.keyword %} · {{ session_progress.keyword }}{% endif %}
+      </div>
+    </div>
+    <div class="actions">
+      <a class="btn btn-sm btn-outline-secondary" href="/session-collector#session-batch-run">刷新状态</a>
+    </div>
+  </div>
+  <div id="session-progress-running" class="alert alert-info" style="display:none; margin-bottom:12px">
+    后台采集正在运行，页面会自动刷新进度。你可以继续留在这个页面观察，不需要重复点击按钮。
+  </div>
+  <div class="progress progress-sm" style="margin-bottom:12px">
+    <div id="session-progress-bar" class="progress-bar bg-primary" style="width:0%"></div>
+  </div>
+  <div id="session-progress-diagnosis" class="alert alert-warning" style="display:none; margin-bottom:12px">
+    <div class="fw-bold" id="session-progress-failure-label"></div>
+    <div id="session-progress-failure-reason" style="margin-top:4px"></div>
+    <div style="margin-top:6px"><strong>下一步：</strong><span id="session-progress-next-step"></span></div>
+  </div>
+  <div class="row row-cards">
+    <div class="col-sm-6 col-lg-3"><div class="text-secondary small">读取</div><div id="session-progress-fetched" class="h3 m-0">{{ session_progress.fetched }}</div></div>
+    <div class="col-sm-6 col-lg-3"><div class="text-secondary small">入库</div><div id="session-progress-inserted" class="h3 m-0">{{ session_progress.inserted }}</div></div>
+    <div class="col-sm-6 col-lg-3"><div class="text-secondary small">候选/过滤</div><div id="session-progress-candidates" class="h3 m-0">{{ session_progress.candidates }} / {{ session_progress.rejected }}</div></div>
+    <div class="col-sm-6 col-lg-3"><div class="text-secondary small">高质量</div><div id="session-progress-high-quality" class="h3 m-0">{{ session_progress.high_quality }}</div></div>
+  </div>
+  <div id="session-progress-message" class="muted" style="margin-top:10px">{{ session_progress.message or "" }}</div>
+</section>
+
+<section id="session-events" class="card card-body" style="margin-bottom:16px">
+  <div class="toolbar">
+    <div>
+      <strong>最近运行日志</strong>
+      <div class="muted" style="margin-top:4px">每一次后台采集和试跑都会留下结果：读到多少、入库多少、过滤多少、为什么暂停。</div>
+    </div>
+  </div>
+  <div class="event-list">
+    {% for event in session_events %}
+    <div class="event-row">
+      <div>
+        <div class="fw-bold">{{ event.platform_label or event.platform }}</div>
+        <div class="text-secondary small">{{ event.time }} · {{ event.kind }}</div>
+      </div>
+      <div><span class="pill {{ 'warn' if event.status in ['暂停','跳过'] else 'good' }}">{{ event.status }}</span></div>
+      <div class="small">读取 {{ event.fetched }} / 入库 {{ event.inserted }}</div>
+      <div class="small">候选 {{ event.candidates }} / 过滤 {{ event.rejected }}</div>
+      <div class="small text-secondary">
+        {% if event.failure_code %}<span class="pill warn">{{ event.failure_code }}</span>{% endif %}
+        {{ event.message or "-" }}
+      </div>
+    </div>
+    {% else %}
+    <div class="muted">暂无运行日志。先点某个平台的“试跑”。</div>
+    {% endfor %}
+  </div>
+</section>
+
+<section id="session-strategy-cards" class="card card-body" style="margin-bottom:16px">
+  <div class="toolbar">
+    <div>
+      <strong>平台作战卡片</strong>
+      <div class="muted" style="margin-top:4px">把“受阻”拆成具体原因：先看策略等级和风险，再看诊断原因，最后按下一步处理。</div>
+    </div>
+  </div>
+  <div class="row row-cards">
+    {% for row in session_diagnostics %}
+    <div class="col-md-6 col-xl-4">
+      <div class="card card-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between gap-2">
+            <div>
+              <div class="fw-bold">{{ row.label }}</div>
+              <div class="text-secondary small">{{ row.strategy_mode }}</div>
+            </div>
+            <span class="pill {{ 'good' if row.health == '可采集' else 'warn' }}">{{ row.health }}</span>
+          </div>
+          <div class="mt-2 d-flex flex-wrap gap-2">
+            <span class="pill">{{ row.strategy_tier }}</span>
+            <span class="pill {{ 'warn' if row.strategy_risk in ['高','中高'] else '' }}">风险 {{ row.strategy_risk }}</span>
+            <span class="pill">{{ row.diagnostic_label }}</span>
+          </div>
+          <div class="mt-2 small text-secondary">{{ row.diagnostic_reason }}</div>
+          <div class="mt-2 small"><strong>下一步：</strong>{{ row.next_step }}</div>
+          <div class="mt-2 small text-secondary">{{ row.strategy_note }}</div>
+          <div class="actions mt-3">
+            <form method="post" action="/session-collector/status/{{ row.platform }}" style="margin:0">
+              <button class="btn btn-sm btn-outline-secondary" type="submit">检查</button>
+            </form>
+            <form method="post" action="/session-collector/smoke/{{ row.platform }}" class="session-run-form" style="margin:0">
+              <button class="btn btn-sm btn-outline-primary" type="submit">试跑</button>
+            </form>
+            <form method="post" action="/session-collector/run/{{ row.platform }}" class="session-run-form" style="margin:0">
+              <button class="btn btn-sm btn-primary" type="submit">采集</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section id="session-diagnostics" class="card card-body" style="margin-bottom:16px">
+  <div class="toolbar">
+    <div>
+      <strong>平台采集诊断</strong>
+      <div class="muted" style="margin-top:4px">这里看每个平台为什么能采、为什么采不到。先看健康度，再决定登录、降频还是换词。</div>
+    </div>
+  </div>
+  <div class="card table-responsive">
+    <table class="table table-vcenter card-table domestic-review-table" style="min-width:100%">
+      <colgroup>
+        <col style="width:92px">
+        <col style="width:95px">
+        <col style="width:90px">
+        <col style="width:95px">
+        <col style="width:120px">
+        <col style="width:125px">
+        <col style="width:120px">
+        <col style="width:105px">
+        <col style="width:105px">
+        <col>
+        <col style="width:220px">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>平台</th>
+          <th>健康度</th>
+          <th>登录态</th>
+          <th>任务</th>
+          <th>读取/入库</th>
+          <th>候选/过滤</th>
+          <th>暂停/运行</th>
+          <th>会话线索</th>
+          <th>高分</th>
+          <th>建议动作</th>
+          <th>最近状态</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in session_diagnostics %}
+        <tr>
+          <td><strong>{{ row.label }}</strong></td>
+          <td><span class="pill {{ 'good' if row.health in ['可采集','待试跑'] else 'warn' }}">{{ row.health }}</span></td>
+          <td>
+            <span class="pill {{ 'good' if row.login_state == 'logged_in' else 'warn' }}">{{ row.login_label }}</span>
+            {% if row.last_checked_at %}<div class="cell-note">{{ row.last_checked_at }}</div>{% endif %}
+          </td>
+          <td>{{ row.keyword_count }} 词<div class="cell-note">{{ row.daily_limit }} 条 / {{ row.delay_seconds }}秒</div></td>
+          <td>{{ row.fetched }} / {{ row.inserted }}</td>
+          <td>
+            {{ row.candidates }} / {{ row.rejected }}
+            <div class="cell-note">高质 {{ row.high_quality_session }}</div>
+          </td>
+          <td>{{ row.paused }} / {{ row.runs }}</td>
+          <td>{{ row.recent_mentions }}</td>
+          <td>{{ row.high_value_mentions }}</td>
+          <td><div class="clamp-3" title="{{ row.action }}">{{ row.action }}</div></td>
+          <td class="muted">
+            <div class="clamp-3" title="{{ row.last_message or '-' }}">{{ row.last_message or "-" }}</div>
+            {% if row.failure_code %}<div class="cell-note">code: {{ row.failure_code }}</div>{% endif %}
+            {% if row.last_run_at %}<div class="cell-note">{{ row.last_run_at }}</div>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="session-platform-tasks" class="card card-body" style="margin-bottom:16px">
+  <div class="toolbar">
+    <div>
+      <strong>平台账号和采集任务</strong>
+      <div class="muted" style="margin-top:4px">状态来自本地浏览器 profile。若显示“登录窗口未关闭”，先关闭刚才打开的平台窗口。</div>
+    </div>
+  </div>
+  <div class="card table-responsive">
+    <table class="table table-vcenter card-table domestic-review-table" style="min-width:100%">
+      <colgroup>
+        <col style="width:110px">
+        <col>
+        <col style="width:110px">
+        <col style="width:80px">
+        <col style="width:80px">
+        <col style="width:300px">
+        <col style="width:220px">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>平台</th>
+          <th>关键词</th>
+          <th>登录状态</th>
+          <th>上限</th>
+          <th>间隔</th>
+          <th>操作</th>
+          <th>说明</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in tasks %}
+        {% set status = login_statuses.get(task.platform) %}
+        <tr>
+          <td><strong>{{ platform_labels.get(task.platform, task.platform) }}</strong></td>
+          <td><div class="clamp-3" title="{{ task.keywords }}">{{ task.keywords }}</div></td>
+          <td>
+            {% if status and status.state == "logged_in" %}
+            <span class="pill good">已登录</span>
+            {% elif status and status.state == "profile_open" %}
+            <span class="pill warn">窗口未关</span>
+            {% elif status and status.state in ["blocked", "error"] %}
+            <span class="pill warn">{{ status.label }}</span>
+            {% elif status and status.state == "not_logged_in" %}
+            <span class="pill warn">未登录</span>
+            {% else %}
+            <span class="pill">未检查</span>
+            {% endif %}
+            {% if status and status.checked_at %}<div class="cell-note">{{ status.checked_at }}</div>{% endif %}
+          </td>
+          <td>{{ task.daily_limit }}</td>
+          <td>{{ task.delay_seconds }} 秒</td>
+          <td>
+            <div class="actions">
+              <form method="post" action="/session-collector/login/{{ task.platform }}" style="margin:0">
+                <button class="btn btn-sm btn-primary" type="submit">登录账号</button>
+              </form>
+              <form method="post" action="/session-collector/status/{{ task.platform }}" style="margin:0">
+                <button class="btn btn-sm btn-outline-secondary" type="submit">检查状态</button>
+              </form>
+              <form method="post" action="/session-collector/run/{{ task.platform }}" class="session-run-form" style="margin:0">
+                <button class="btn btn-sm btn-outline-secondary" type="submit">后台采集</button>
+              </form>
+            </div>
+          </td>
+          <td class="muted">
+            {% if status and status.message %}
+            <div class="clamp-3" title="{{ status.message }}">{{ status.message }}</div>
+            {% else %}
+            只读取公开搜索结果；不私信、不关注、不评论。
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<form class="card card-body" method="post" action="/session-collector/tasks" style="margin-bottom:16px">
+  <div class="toolbar">
+    <div>
+      <strong>更新采集任务</strong>
+      <div class="muted" style="margin-top:4px">只改关键词和频率，不影响登录状态。</div>
+    </div>
+    <button class="btn btn-sm btn-outline-secondary" type="submit">保存任务</button>
+  </div>
+  <div class="actions">
+    <select class="form-select form-select-sm" name="platform">
+      {% for key, label in platform_labels.items() %}
+      <option value="{{ key }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+    <input class="form-control form-control-sm" name="keywords" placeholder="关键词，用逗号分隔，例如：TikTok 多账号会关联吗, 亚马逊店铺关联怎么办" style="min-width:420px" required>
+    <label class="muted">上限</label>
+    <input class="form-control form-control-sm" name="daily_limit" type="number" min="1" max="200" value="20" style="width:80px">
+    <label class="muted">间隔秒</label>
+    <input class="form-control form-control-sm" name="delay_seconds" type="number" min="3" max="120" value="8" style="width:80px">
+  </div>
+</form>
+
+<section class="card card-body" style="margin-bottom:16px">
+  <div class="toolbar">
+    <div>
+      <strong>最近采集结果</strong>
+      <div class="muted" style="margin-top:4px">这里直接显示最近通过登录会话采到的公开搜索结果，采完不用再猜去哪里找。</div>
+    </div>
+    <div class="actions">
+      <a class="btn btn-sm btn-outline-secondary" href="/">去线索页</a>
+      <a class="btn btn-sm btn-outline-secondary" href="/domestic-review?min_score=40">去国内质检</a>
+    </div>
+  </div>
+  <div class="card table-responsive">
+    <table class="table table-vcenter card-table domestic-review-table" style="min-width:100%">
+      <colgroup>
+        <col>
+        <col style="width:120px">
+        <col style="width:190px">
+        <col style="width:95px">
+        <col style="width:80px">
+        <col style="width:120px">
+        <col style="width:150px">
+        <col style="width:110px">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>标题</th>
+          <th>平台</th>
+          <th>采集词</th>
+          <th>质量</th>
+          <th>评分</th>
+          <th>信号</th>
+          <th>发现时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in recent_mentions %}
+        {% set meta = session_source_meta(row) %}
+        {% set t = mention_time(row) %}
+        <tr>
+          <td>
+            <a class="title-link" href="/mentions/{{ row.id }}">{{ row.title }}</a>
+            <div class="cell-note clamp-2" title="{{ row.source_name }}">{{ meta.method }} / {{ row.source_name }}</div>
+          </td>
+          <td>
+            <strong>{{ meta.platform }}</strong>
+            <div class="cell-note">国内平台</div>
+          </td>
+          <td><div class="clamp-2" title="{{ meta.keyword }}">{{ meta.keyword }}</div></td>
+          <td>
+            <span class="pill {% if meta.quality == '高意向' %}good{% elif '待复核' %}warn{% endif %}">{{ meta.quality }}</span>
+          </td>
+          <td><span class="score {% if row.score < 40 %}low{% elif 70 %}mid{% endif %}">{{ row.score }}</span></td>
+          <td><span class="pill">{{ signal_labels.get(row.signal_type, row.signal_type) }}</span></td>
+          <td class="cell-note">
+            <span class="pill {{ t.class }}">{{ t.label }}</span>
+            <div>{{ t.basis }}：{{ format_dt(t.time) }}</div>
+            <div>发现：{{ t.discovered }}</div>
+          </td>
+          <td>
+            <div class="actions">
+              <a class="btn btn-sm btn-outline-secondary" href="/mentions/{{ row.id }}">详情</a>
+              <a class="btn btn-sm btn-outline-secondary" href="{{ row.canonical_url }}" target="_blank" rel="noreferrer">原文</a>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="muted">还没有会话采集结果。先检查登录状态，再点“后台采集”。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card card-body">
+  <strong>边界</strong>
+  <div class="muted" style="margin-top:6px; line-height:1.7">
+    不做验证码破解、不绕登录、不自动私信、不批量互动。账号异常时会暂停，留给人工处理。
+  </div>
+</section>
+
+<script>
+(() => {
+  const meta = document.getElementById("session-progress-meta");
+  const running = document.getElementById("session-progress-running");
+  const bar = document.getElementById("session-progress-bar");
+  const fetched = document.getElementById("session-progress-fetched");
+  const inserted = document.getElementById("session-progress-inserted");
+  const candidates = document.getElementById("session-progress-candidates");
+  const highQuality = document.getElementById("session-progress-high-quality");
+  const message = document.getElementById("session-progress-message");
+  const diagnosis = document.getElementById("session-progress-diagnosis");
+  const failureLabel = document.getElementById("session-progress-failure-label");
+  const failureReason = document.getElementById("session-progress-failure-reason");
+  const nextStep = document.getElementById("session-progress-next-step");
+
+  function stateLabel(state) {
+    return {
+      queued: "已排队",
+      starting: "启动中",
+      running: "采集中",
+      done: "已完成",
+      paused: "已暂停",
+      idle: "空闲",
+      unknown: "未知",
+    }[state] || state || "未知";
+  }
+
+  function setImmediateFeedback() {
+    if (meta) meta.textContent = "刚刚提交 · 已排队";
+    if (message) message.textContent = "后台采集任务已提交，正在启动浏览器会话。";
+    if (failureLabel) failureLabel.textContent = "";
+    if (failureReason) failureReason.textContent = "";
+    if (nextStep) nextStep.textContent = "等待后台任务启动，页面会自动刷新进度。";
+    if (diagnosis) diagnosis.style.display = "block";
+    if (running) running.style.display = "block";
+    if (bar) {
+      bar.style.width = "18%";
+      bar.classList.add("progress-bar-indeterminate");
+    }
+  }
+
+  function renderProgress(data) {
+    const parts = [data.updated_at || "暂无运行时间", data.state_label || stateLabel(data.state)];
+    if (data.platform_label) parts.push(data.platform_label);
+    if (data.keyword) parts.push(data.keyword);
+    if (meta) meta.textContent = parts.join(" · ");
+    if (fetched) fetched.textContent = data.fetched || 0;
+    if (inserted) inserted.textContent = data.inserted || 0;
+    if (candidates) candidates.textContent = `${data.candidates || 0} / ${data.rejected || 0}`;
+    if (highQuality) highQuality.textContent = data.high_quality || 0;
+    if (message) message.textContent = data.message || "";
+    if (running) running.style.display = data.running ? "block" : "none";
+    const hasDiagnosis = Boolean(data.failure_label || data.failure_reason || data.stale);
+    if (diagnosis) diagnosis.style.display = hasDiagnosis ? "block" : "none";
+    if (failureLabel) failureLabel.textContent = data.failure_label || (data.running ? "正在采集" : "");
+    if (failureReason) failureReason.textContent = data.failure_reason || "";
+    if (nextStep) nextStep.textContent = data.next_step || "";
+    if (bar) {
+      const total = Math.max((data.candidates || 0) + (data.rejected || 0), data.fetched || 0, data.inserted || 0);
+      const pct = data.running ? Math.min(92, Math.max(18, total * 8)) : (data.state === "done" ? 100 : 0);
+      bar.style.width = `${pct}%`;
+      bar.classList.toggle("progress-bar-indeterminate", Boolean(data.running));
+    }
+  }
+
+  async function pollProgress() {
+    try {
+      const response = await fetch("/session-collector/progress.json", { cache: "no-store" });
+      if (!response.ok) return;
+      renderProgress(await response.json());
+    } catch (_) {
+      // Keep the previous progress visible when a short poll fails.
+    }
+  }
+
+  document.querySelectorAll(".session-run-form").forEach((form) => {
+    form.addEventListener("submit", setImmediateFeedback);
+  });
+  pollProgress();
+  setInterval(pollProgress, 1500);
+})();
+</script>
+{% endblock %}

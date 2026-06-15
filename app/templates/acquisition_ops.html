@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">获客作战台</h1>
+    <div class="page-subtitle">每天只看三件事：能跑的平台、要修的采集状态、今天值得销售跟进的动态住宅 IP 线索。</div>
+  </div>
+  <div class="actions">
+    <a class="btn btn-sm btn-outline-secondary" href="/session-collector">会话采集</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/contact-workbench">补联系方式</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/domestic-review">国内质检</a>
+  </div>
+</div>
+
+<div class="ops-board">
+  <section class="stats">
+    <div class="stat"><strong>{{ board.stats.demand_signals }}</strong><span class="muted">需求雷达信号</span></div>
+    <div class="stat"><strong>{{ board.stats.b2b_accounts }}</strong><span class="muted">B2B 公司客户</span></div>
+    <div class="stat"><strong>{{ board.stats.b2b_missing_contact }}</strong><span class="muted">B2B 待补联系</span></div>
+    <div class="stat"><strong>{{ board.stats.runnable_platforms }}</strong><span class="muted">可运行平台</span></div>
+  </section>
+
+  <section class="card card-body">
+    <div class="toolbar">
+      <div>
+        <div class="section-title">今日建议</div>
+        <div class="muted" style="margin-top:4px">生成时间：{{ board.generated_at }}</div>
+      </div>
+    </div>
+    <div class="recommendation-list">
+      {% for item in board.recommendations %}
+      <div class="recommendation-item">{{ item }}</div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="card card-body">
+    <div class="toolbar">
+      <div>
+        <div class="section-title">需求雷达平台状态</div>
+        <div class="muted" style="margin-top:4px">大海捞针只跑可运行平台；未登录或受阻平台先处理状态。</div>
+      </div>
+    </div>
+    <div class="card table-responsive">
+      <table class="table table-vcenter card-table domestic-review-table">
+        <colgroup>
+          <col style="width:130px">
+          <col style="width:96px">
+          <col style="width:105px">
+          <col style="width:110px">
+          <col style="width:90px">
+          <col style="width:90px">
+          <col style="width:420px">
+          <col style="width:120px">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>平台</th>
+            <th>状态</th>
+            <th>登录态</th>
+            <th>健康度</th>
+            <th>高匹配</th>
+            <th>待补</th>
+            <th>原因/动作</th>
+            <th>入口</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in board.platform_rows %}
+          <tr>
+            <td><strong>{{ row.label }}</strong></td>
+            <td><span class="pill {{ 'good' if row.state == '可运行' else ('warn' if row.state in ['需处理','未就绪'] else '') }}">{{ row.state }}</span></td>
+            <td>{{ row.login_state }}</td>
+            <td>{{ row.health }}</td>
+            <td>{{ row.qualified }}</td>
+            <td>{{ row.missing_contact }}</td>
+            <td>
+              <div class="clamp-2" title="{{ row.reason }}">{{ row.reason }}</div>
+              <div class="muted" style="margin-top:4px">{{ row.action }}</div>
+            </td>
+            <td><a class="btn btn-sm btn-outline-secondary" href="{{ row.next_url }}">处理</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card card-body">
+    <div class="toolbar">
+      <div>
+        <div class="section-title">高质量线索漏斗</div>
+        <div class="muted" style="margin-top:4px">这是需求雷达进入销售前的漏斗；B2B 公司客户请进入客户库处理。</div>
+      </div>
+      <div class="actions">
+        <a class="btn btn-sm btn-outline-secondary" href="/demand-radar">看需求雷达</a>
+        <a class="btn btn-sm btn-outline-secondary" href="/b2b-accounts">看 B2B 客户库</a>
+        <a class="btn btn-sm btn-outline-secondary" href="/contact-workbench?mode=missing&platform=domestic&min_score=50">看补联队列</a>
+        <a class="btn btn-sm btn-outline-secondary" href="/today">今日跟进</a>
+      </div>
+    </div>
+    <div class="card table-responsive">
+      <table class="table table-vcenter card-table domestic-review-table">
+        <colgroup>
+          <col style="width:100px">
+          <col style="width:90px">
+          <col style="width:320px">
+          <col style="width:130px">
+          <col style="width:120px">
+          <col style="width:320px">
+          <col style="width:160px">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>层级</th>
+            <th>ICP</th>
+            <th>客户/线索</th>
+            <th>平台</th>
+            <th>状态</th>
+            <th>判断原因</th>
+            <th>下一步</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in board.funnel_rows %}
+          <tr>
+            <td><span class="pill {{ 'good' if row.tier == 'A' else ('warn' if row.tier == '风险' else '') }}">{{ row.tier }} · {{ row.label }}</span></td>
+            <td><span class="score {{ 'mid' if row.score < 70 else '' }}">{{ row.score }}</span></td>
+            <td>
+              <a class="title-link clamp-2" href="/prospects/{{ row.prospect.id }}">{{ row.prospect.display_name }}</a>
+              {% if row.mention %}<div class="muted clamp-2">{{ row.mention.title }}</div>{% endif %}
+            </td>
+            <td>{{ row.prospect.platform }}</td>
+            <td>{{ prospect_status_labels.get(row.prospect.status, row.prospect.status) }}</td>
+            <td><div class="clamp-3" title="{{ row.reason }}">{{ row.reason }}</div></td>
+            <td>
+              <div class="clamp-3" title="{{ row.next_action }}">{{ row.next_action }}</div>
+              {% if row.label == '优先补联系方式' %}
+              <a class="btn btn-sm btn-outline-secondary" href="/contact-workbench?platform={{ row.prospect.platform }}&mode=missing&min_score=0">补联系</a>
+              {% else %}
+              <a class="btn btn-sm btn-outline-secondary" href="/prospects/{{ row.prospect.id }}">处理</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="muted">暂无可处理的高质量线索。</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

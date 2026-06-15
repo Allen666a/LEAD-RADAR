@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card card-body" style="margin-bottom: 14px">
+  <strong>销售任务看板</strong>
+  <div class="muted">把跟进池拆成今天该处理的任务组，优先处理到期复访和高分新客户。</div>
+  <div class="actions" style="margin-top:10px">
+    <a class="btn btn-sm btn-outline-secondary" href="/tasks.csv">导出任务 CSV</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/pipeline">进入跟进池</a>
+  </div>
+</div>
+
+{% for title, rows in groups %}
+<section class="card card-body" style="margin-bottom: 16px">
+  <strong>{{ title }}</strong>
+  <span class="pill">{{ rows|length }}</span>
+</section>
+<table class="table table-vcenter card-table" style="margin-bottom: 18px">
+  <thead>
+    <tr>
+      <th>客户</th>
+      <th>评分</th>
+      <th>类型</th>
+      <th>阶段</th>
+      <th>下一步</th>
+      <th>复访时间</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      <td>
+        <a class="title-link" href="/prospects/{{ row.id }}">{{ row.display_name }}</a>
+        <div class="muted">{{ product_fit_labels.get(row.product_fit, row.product_fit) }} · {{ row.platform }}</div>
+      </td>
+      <td><span class="score {{ 'mid' if row.lead_score < 80 else '' }}">{{ row.lead_score }}</span></td>
+      <td>{{ customer_type_labels.get(row.customer_type, row.customer_type) }}</td>
+      <td><span class="pill">{{ prospect_status_labels.get(row.status, row.status) }}</span></td>
+      <td>{{ row.next_action or row.suggested_action or "-" }}</td>
+      <td class="muted">{{ row.next_follow_up_at.strftime("%Y-%m-%d %H:%M") if row.next_follow_up_at else "未安排" }}</td>
+      <td><a class="btn btn-sm btn-outline-secondary" href="/prospects/{{ row.id }}">处理</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="muted">暂无</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endfor %}
+{% endblock %}

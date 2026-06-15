@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="contact-page">
+  <section class="contact-hero">
+    <div>
+      <div class="clean-eyebrow">CONTACT WORKBENCH</div>
+      <h1>待联系</h1>
+      <p>把高相关线索补成可触达客户。只认微信、QQ、Telegram、邮箱或手机号；主页和原文只是查找入口。</p>
+    </div>
+    <div class="contact-hero-actions">
+      <form method="post" action="/contact-workbench/enrich-public" class="contact-inline-form">
+        <input type="hidden" name="mode" value="{{ filters.mode }}">
+        <input type="hidden" name="platform" value="{{ filters.platform }}">
+        <input type="hidden" name="min_score" value="{{ filters.min_score }}">
+        <input name="limit" type="number" min="1" max="30" value="12" aria-label="自动补全数量">
+        <button class="btn btn-primary" type="submit"><i class="ti ti-bolt"></i> 自动补联系方式</button>
+      </form>
+      <a class="btn btn-outline-secondary" href="/contact-workbench.csv?mode={{ filters.mode }}&platform={{ filters.platform }}&min_score={{ filters.min_score }}"><i class="ti ti-download"></i> 导出</a>
+    </div>
+  </section>
+
+  {% if message %}
+  <div class="alert alert-success contact-message">{{ message }}</div>
+  {% endif %}
+
+  <section class="contact-stats">
+    <div><strong>{{ stats.total }}</strong><span>当前任务</span></div>
+    <div><strong>{{ stats.missing }}</strong><span>待补联系方式</span></div>
+    <div><strong>{{ stats.contactable }}</strong><span>可进入跟进</span></div>
+    <div><strong>{{ stats.hot }}</strong><span>高优先级</span></div>
+  </section>
+
+  <form method="get" action="/contact-workbench" class="contact-filter">
+    <label>
+      <span>看什么</span>
+      <select name="mode">
+        <option value="missing" {% if filters.mode == "missing" %}selected{% endif %}>只看待补联系方式</option>
+        <option value="contactable" {% if filters.mode == "contactable" %}selected{% endif %}>已有联系方式</option>
+        <option value="needs_intent" {% if filters.mode == "needs_intent" %}selected{% endif %}>有联系方式但意向弱</option>
+        <option value="all" {% if filters.mode == "all" %}selected{% endif %}>全部客户</option>
+      </select>
+    </label>
+    <label>
+      <span>平台范围</span>
+      <select name="platform">
+        <option value="domestic" {% if filters.platform == "domestic" %}selected{% endif %}>国内优先</option>
+        <option value="all" {% if filters.platform == "all" %}selected{% endif %}>全部平台</option>
+        {% for item in platforms %}
+        <option value="{{ item }}" {% if filters.platform == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>最低分</span>
+      <input name="min_score" type="number" min="0" max="100" value="{{ filters.min_score }}">
+    </label>
+    <button class="btn btn-primary" type="submit"><i class="ti ti-filter"></i> 筛选</button>
+  </form>
+
+  <section class="contact-guide">
+    <div><strong>1. 先看优先级</strong><span>优先处理高分、2026 年新线索、动态住宅 IP 场景明确的客户。</span></div>
+    <div><strong>2. 打开补全入口</strong><span>从原文、主页、同名搜索、站内搜索找公开联系方式。</span></div>
+    <div><strong>3. 保存并推进</strong><span>补到联系方式后保存，进入跟进；找不到就标记复查或无效。</span></div>
+  </section>
+
+  <div class="contact-list">
+    {% for row in rows %}
+    {% set prospect = row.prospect %}
+    {% set mention = row.top_mention %}
+    {% set t = prospect_time(prospect) %}
+    <article class="contact-task">
+      <div class="contact-priority">
+        <strong>{{ row.priority_score }}</strong>
+        <span>优先级</span>
+        <em class="{{ 'good' if row.has_contact else 'warn' }}">{{ row.contact_state }}</em>
+      </div>
+
+      <div class="contact-main">
+        <div class="contact-title-row">
+          <a class="contact-title" href="/prospects/{{ prospect.id }}">{{ row.display_label }}</a>
+          <span class="pill {{ t.class }}">时效：{{ t.label }}</span>
+        </div>
+        <div class="contact-meta">
+          来源：{{ row.source_label }} · 平台：{{ prospect.platform }} · 类型：{{ customer_type_labels.get(prospect.customer_type, prospect.customer_type) }}
+        </div>
+        <div class="contact-meta">
+          {{ t.basis }}：{{ format_dt(t.time) }} · 线索 {{ prospect.lead_score }} · ICP {{ row.icp_score }} · 补全成功率 {{ row.enrichment_score }}
+        </div>
+
+        <div class="contact-section">
+          <strong>为什么值得补</strong>
+          <p>{{ row.reason }}</p>
+          <p class="muted">{{ row.icp_reason }}</p>
+        </div>
+
+        <div class="contact-section">
+          <strong>证据</strong>
+          {% if mention %}
+          <p>{{ mention.title }}</p>
+          <p class="muted">{{ mention.source_name }} · 评分 {{ mention.score }}</p>
+          <a href="{{ mention.canonical_url }}" target="_blank" rel="noreferrer">打开原文</a>
+          {% else %}
+          <p class="clickable-text">{{ linkify(prospect.evidence or "-") }}</p>
+          {% endif %}
+        </div>
+
+        <div class="contact-section">
+          <strong>建议查找路径</strong>
+          <p>{{ row.enrichment_hint }}</p>
+          <div class="contact-links">
+            {% for link in row.search_links %}
+            <a href="{{ link.url }}" target="_blank" rel="noreferrer">{{ link.label }}</a>
+            {% endfor %}
+          </div>
+          {% if row.last_enrichment_note %}
+          <details>
+            <summary>最近补全记录</summary>
+            <div class="cell-note clickable-text">{{ linkify(row.last_enrichment_note) }}</div>
+          </details>
+          {% endif %}
+        </div>
+      </div>
+
+      <aside class="contact-panel">
+        <div class="contact-section">
+          <strong>当前联系方式</strong>
+          {% if row.contact_summary %}
+          <p class="clickable-text">{{ linkify(row.contact_summary) }}</p>
+          <div class="contact-score">置信度 {{ row.contact_confidence }}/100 · 记录 {{ row.contact_records }}</div>
+          {% else %}
+          <p class="muted">还没有真实联系方式。</p>
+          <div class="contact-missing">
+            {% for item in row.missing_channels[:4] %}
+            <span>{{ item }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+
+        <form method="post" action="/contact-workbench/action" class="contact-save-form">
+          <input type="hidden" name="prospect_id" value="{{ prospect.id }}">
+          <input type="hidden" name="mode" value="{{ filters.mode }}">
+          <input type="hidden" name="platform" value="{{ filters.platform }}">
+          <input type="hidden" name="min_score" value="{{ filters.min_score }}">
+          <div class="contact-fast-grid">
+            <label>微信<input name="wechat" value="{{ prospect.wechat or '' }}" placeholder="微信号"></label>
+            <label>QQ<input name="qq" placeholder="QQ 号"></label>
+            <label>Telegram<input name="telegram" value="{{ prospect.telegram or '' }}" placeholder="@username"></label>
+            <label>邮箱<input name="email" value="{{ prospect.email or '' }}" placeholder="email@example.com"></label>
+          </div>
+          <label>网站/主页<input name="website" value="{{ prospect.website or '' }}" placeholder="公开主页或官网"></label>
+          <label>来源
+            <select name="contact_source">
+              <option value="">未选择</option>
+              <option value="homepage">主页/个人资料</option>
+              <option value="original">原文</option>
+              <option value="site_search">站内搜索</option>
+              <option value="same_name">同名全网搜索</option>
+              <option value="manual">人工确认</option>
+            </select>
+          </label>
+          <label>备注<textarea name="contact_note" placeholder="手机号、来源截图说明、是否确认本人">{{ prospect.contact_note or '' }}</textarea></label>
+          <label>下一步<textarea name="next_action" placeholder="保存后怎么跟进">{{ prospect.next_action or prospect.suggested_action or '' }}</textarea></label>
+          <button class="btn btn-primary w-100" name="action" value="save_contact" type="submit">保存并进入跟进</button>
+        </form>
+
+        <form method="post" action="/contact-workbench/action" class="contact-actions">
+          <input type="hidden" name="prospect_id" value="{{ prospect.id }}">
+          <input type="hidden" name="mode" value="{{ filters.mode }}">
+          <input type="hidden" name="platform" value="{{ filters.platform }}">
+          <input type="hidden" name="min_score" value="{{ filters.min_score }}">
+          <button class="btn btn-outline-secondary" name="action" value="qualify" type="submit">可跟进</button>
+          <button class="btn btn-outline-secondary" name="action" value="follow_up" type="submit">3天复查</button>
+          <button class="btn btn-outline-danger" name="action" value="invalid" type="submit">无效</button>
+        </form>
+
+        <form method="post" action="/contact-workbench/action" class="contact-no-contact">
+          <input type="hidden" name="prospect_id" value="{{ prospect.id }}">
+          <input type="hidden" name="mode" value="{{ filters.mode }}">
+          <input type="hidden" name="platform" value="{{ filters.platform }}">
+          <input type="hidden" name="min_score" value="{{ filters.min_score }}">
+          <label>找不到原因
+            <select name="no_contact_reason">
+              <option value="not_found">公开页面未找到</option>
+              <option value="private_only">只看到私信入口</option>
+              <option value="generic_page">页面太泛，无法确认本人</option>
+              <option value="low_intent">意向不够强，暂不继续找</option>
+              <option value="platform_blocked">平台登录/验证受阻</option>
+            </select>
+          </label>
+          <button class="btn btn-outline-secondary w-100" name="action" value="no_contact" type="submit">标记找不到</button>
+        </form>
+      </aside>
+    </article>
+    {% else %}
+    <div class="empty-state">
+      暂无符合条件的客户。先去“找线索”采集 2026 年后的动态住宅 IP 相关需求。
+      <div style="margin-top:.75rem"><a class="btn btn-primary" href="/leads"><i class="ti ti-search"></i> 去找线索</a></div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

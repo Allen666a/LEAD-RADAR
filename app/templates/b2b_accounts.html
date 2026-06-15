@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">工作室 / 服务商线索</h1>
+    <div class="page-subtitle">这里不是正式企业采购库，而是沉淀小团队、跨境工作室、账号服务商、爬虫接单团队和指纹浏览器用户群体。</div>
+  </div>
+  <div class="actions">
+    <form method="post" action="/b2b-accounts/rebuild" style="margin:0">
+      <button class="btn btn-sm btn-primary" type="submit">从线索回填</button>
+    </form>
+    <form method="post" action="/b2b-accounts/rescore" style="margin:0">
+      <button class="btn btn-sm btn-outline-secondary" type="submit">重算匹配</button>
+    </form>
+    <form method="post" action="/b2b-accounts/waterfall" class="actions" style="margin:0">
+      <input type="hidden" name="limit" value="3">
+      <button class="btn btn-sm btn-outline-secondary" type="submit">轻量补联系</button>
+    </form>
+    <a class="btn btn-sm btn-outline-secondary" href="/demand-radar">痛点雷达</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/b2b-accounts.csv?status={{ filters.status }}&contact={{ filters.contact }}&min_score={{ filters.min_score }}">导出 CSV</a>
+  </div>
+</div>
+
+{% if message %}<section class="card card-body" style="margin-bottom:14px">{{ message }}</section>{% endif %}
+
+<section class="stats">
+  <div class="stat"><strong>{{ stats.companies }}</strong><span class="muted">团队/服务商</span></div>
+  <div class="stat"><strong>{{ stats.a_accounts }}</strong><span class="muted">高优先级</span></div>
+  <div class="stat"><strong>{{ stats.missing_contact }}</strong><span class="muted">待补联系方式</span></div>
+  <div class="stat"><strong>{{ stats.contactable }}</strong><span class="muted">可私聊</span></div>
+</section>
+
+<section class="card card-body">
+  <div class="toolbar">
+    <div>
+      <div class="section-title">小B线索池</div>
+      <div class="muted" style="margin-top:4px">优先判断有没有真实痛点和可触达方式，不以官网、发票、公司资质作为现阶段主线。</div>
+    </div>
+    <form method="get" action="/b2b-accounts" class="actions">
+      <input class="form-control form-control-sm" name="q" value="{{ filters.q }}" placeholder="搜索工作室/平台/场景" style="width:220px">
+      <select class="form-select form-select-sm" name="contact">
+        <option value="all" {% if filters.contact == "all" %}selected{% endif %}>全部联系方式</option>
+        <option value="missing" {% if filters.contact == "missing" %}selected{% endif %}>缺联系方式</option>
+        <option value="contactable" {% if filters.contact == "contactable" %}selected{% endif %}>可私聊</option>
+      </select>
+      <input class="form-control form-control-sm" name="min_score" type="number" min="0" max="100" value="{{ filters.min_score }}" style="width:86px">
+      <button class="btn btn-sm btn-primary" type="submit">筛选</button>
+    </form>
+  </div>
+
+  <div class="account-queue">
+    {% for row in rows %}
+    {% set t = company_time(row) %}
+    <article class="account-card">
+      <div class="account-card-main">
+        <a class="account-title clamp-2" href="/b2b-accounts/{{ row.id }}">{{ row.company_name or row.domain or row.company_key }}</a>
+        {% if row.website %}
+        <div class="account-meta"><a href="{{ row.website }}" target="_blank">{{ row.domain or row.website }}</a></div>
+        {% endif %}
+        <div class="account-meta">{{ row.country or row.region or "-" }}</div>
+        <div class="account-meta">
+          <span class="pill">{{ customer_type_labels.get(row.customer_type, row.customer_type) }}</span>
+          <span class="ms-1">信号 {{ row.signal_count }} / 联系 {{ row.contact_count }}</span>
+        </div>
+        <div class="account-meta">
+          <span class="pill {{ t.class }}">时效：{{ t.label }}</span>
+          <span class="ms-1">{{ t.basis }}：{{ format_dt(t.time) }}</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="account-card-label">评分</div>
+        <div class="account-scores">
+          <div class="account-score"><strong>{{ row.priority_score }}</strong><span>优先级</span></div>
+          <div class="account-score"><strong>{{ row.fit_score }}</strong><span>匹配</span></div>
+          <div class="account-score"><strong>{{ row.intent_score }}</strong><span>意图</span></div>
+          <div class="account-score"><strong>{{ row.contact_score }}</strong><span>联系</span></div>
+        </div>
+        <div class="account-meta mt-2">
+          <span class="pill {{ 'good' if row.contact_status == 'contactable' else 'warn' }}">{{ row.contact_status }}</span>
+          <span class="ms-1">{{ row.crm_status }}</span>
+        </div>
+      </div>
+
+      <div class="account-evidence">
+        <div class="account-card-label">痛点证据</div>
+        <div class="clamp-4" title="{{ row.need_reason }}">{{ row.need_reason or row.evidence_summary or "-" }}</div>
+      </div>
+
+      <div class="account-actions">
+        <div class="account-next">
+          <div class="account-card-label">下一步</div>
+          <div class="clamp-4" title="{{ row.next_action }}">{{ row.next_action or "-" }}</div>
+        </div>
+        <div class="account-action-buttons">
+          <a class="btn btn-sm btn-primary" href="/b2b-accounts/{{ row.id }}">详情</a>
+          <a class="btn btn-sm btn-outline-secondary" href="/contact-workbench?platform=all&mode=missing&min_score=0">补联系</a>
+        </div>
+      </div>
+    </article>
+    {% else %}
+    <div class="empty-state">暂无小B线索。先从痛点雷达或会话采集获得真实讨论，再回填到这里。</div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card card-body" style="margin-top:16px">
+  <div class="toolbar">
+    <div>
+      <div class="section-title">后台补全任务</div>
+      <div class="muted" style="margin-top:4px">保留官网/GitHub/Waterfall 能力，但只作为补充联系方式，不作为现阶段正式 ToB 销售主线。</div>
+    </div>
+    <a class="btn btn-sm btn-outline-secondary" href="/agents">查看 Agent 引擎</a>
+  </div>
+  <div class="card table-responsive">
+    <table class="table table-vcenter card-table">
+      <colgroup>
+        <col style="width:80px">
+        <col style="width:180px">
+        <col style="width:120px">
+        <col>
+        <col style="width:190px">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>任务</th>
+          <th>状态</th>
+          <th>结果</th>
+          <th>时间</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for job in recent_jobs %}
+        <tr>
+          <td>{{ job.id }}</td>
+          <td>
+            <strong>{{ job.label }}</strong>
+            <div class="muted">{{ job.kind }}</div>
+          </td>
+          <td>
+            <span class="pill {{ 'good' if job.status == 'done' else ('warn' if job.status in ['failed','retry'] else '') }}">
+              {{ job_status_labels.get(job.status, job.status) }}
+            </span>
+          </td>
+          <td>
+            <div>{{ job_result_summary(job) or "-" }}</div>
+            {% if job.error %}<div class="risk">{{ job.error }}</div>{% endif %}
+          </td>
+          <td class="muted">{{ job.created_at.strftime("%Y-%m-%d %H:%M:%S") if job.created_at else "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="muted">暂无后台补全任务。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

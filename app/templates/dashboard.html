@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="clean-page">
+  <header class="clean-hero">
+    <div>
+      <div class="clean-eyebrow">找线索</div>
+      <h1>找线索</h1>
+      <p>先看 2026 年后的动态住宅 IP 需求；旧线索、低质线索和无时间线索会明确标出来。</p>
+    </div>
+    <div class="clean-actions">
+      <a class="btn btn-outline-secondary" href="/session-collector#session-platform-tasks"><i class="ti ti-login-2 me-1"></i>平台登录</a>
+      <a class="btn btn-outline-secondary" href="/contact-workbench"><i class="ti ti-address-book me-1"></i>待联系</a>
+    </div>
+  </header>
+
+  {% if board.message %}
+  <section class="clean-panel">
+    <div class="alert alert-success m-0">{{ board.message }}</div>
+  </section>
+  {% endif %}
+
+  <section class="clean-panel">
+    <div class="clean-section-head">
+      <div>
+        <h2>你想找哪类客户？</h2>
+        <p>不知道选什么就用“全部目标客户”，系统会先按动态住宅 IP 需求筛一遍。</p>
+      </div>
+    </div>
+    <form method="get" action="/leads" class="lead-guide">
+      <input type="hidden" name="scope" value="all">
+      <div class="lead-segment-grid">
+        {% for item in board.segments %}
+        <label class="lead-option {{ 'active' if board.selected_segment == item.key else '' }}">
+          <input type="radio" name="segment" value="{{ item.key }}" {% if board.selected_segment == item.key %}checked{% endif %}>
+          <strong>{{ item.label }}</strong>
+          <span>{{ item.description }}</span>
+        </label>
+        {% endfor %}
+      </div>
+
+      <div class="lead-pool-tabs" aria-label="线索池切换">
+        <button class="{{ 'active' if board.selected_pool == 'usable' else '' }}" name="pool" value="usable" type="submit">
+          全部可用 <span>{{ board.stats.main_pool + board.stats.review_pool }}</span>
+        </button>
+        <button class="{{ 'active' if board.selected_pool == 'review' else '' }}" name="pool" value="review" type="submit">
+          待复核 <span>{{ board.stats.review_pool }}</span>
+        </button>
+        <button class="{{ 'active' if board.selected_pool == 'invalid' else '' }}" name="pool" value="invalid" type="submit">
+          垃圾 <span>{{ board.stats.invalid_pool }}</span>
+        </button>
+      </div>
+
+      <div class="lead-controls">
+        <label>
+          <span>最低分</span>
+          <input class="form-control" name="min_score" type="number" min="0" max="100" value="{{ board.min_score }}">
+        </label>
+        <button class="btn btn-outline-secondary" type="submit">预览结果</button>
+      </div>
+    </form>
+
+    <form method="post" action="/leads/search" class="lead-runbar">
+      <input type="hidden" name="segment" value="{{ board.selected_segment }}">
+      <input type="hidden" name="scope" value="{{ board.selected_scope }}">
+      <input type="hidden" name="pool" value="{{ board.selected_pool }}">
+      <input type="hidden" name="min_score" value="{{ board.min_score }}">
+      <input type="hidden" name="source_limit" value="0">
+      <button class="btn btn-primary" type="submit"><i class="ti ti-search me-1"></i>开始找线索</button>
+      <div class="lead-run-note">默认跑全部启用来源；只读公开内容，单个来源超时会跳过。</div>
+    </form>
+  </section>
+
+  <section class="clean-summary" aria-label="找线索结果概览">
+    <div><strong>{{ board.stats.results }}</strong><span>当前结果</span></div>
+    <div><strong>{{ board.stats.fresh }}</strong><span>2026 年线索</span></div>
+    <div><strong>{{ board.stats.high }}</strong><span>高优先级</span></div>
+    <div><strong>{{ board.stats.missing_contact }}</strong><span>待补联系方式</span></div>
+    <div><strong>{{ board.stats.review_pool }}</strong><span>待复核池</span></div>
+    <div><strong>{{ board.stats.invalid_pool }}</strong><span>垃圾池</span></div>
+  </section>
+
+  <section class="clean-panel">
+    <div class="clean-section-head">
+      <div>
+        <h2>找到的线索</h2>
+        <p>每条都带来源、时间、为什么值得看和下一步动作。待复核线索先人工判断，再决定是否补联系方式。</p>
+      </div>
+      <a class="btn btn-sm btn-outline-secondary" href="/leads?segment=all&scope=all&pool=usable&min_score=0">重置</a>
+    </div>
+
+    {% if board.examples %}
+    <div class="lead-examples">
+      <span>本类客户常见信号</span>
+      {% for item in board.examples %}
+      <strong>{{ item }}</strong>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if board.rows %}
+    <form id="bulk-review-form" method="post" action="/leads/bulk-action" class="lead-bulk-actions">
+      <input type="hidden" name="segment" value="{{ board.selected_segment }}">
+      <input type="hidden" name="scope" value="{{ board.selected_scope }}">
+      <input type="hidden" name="pool" value="{{ board.selected_pool }}">
+      <input type="hidden" name="min_score" value="{{ board.min_score }}">
+      <span>勾选线索后批量处理</span>
+      <button class="btn btn-sm btn-outline-secondary" name="action" value="need_contact" type="submit">值得补联系方式</button>
+      <button class="btn btn-sm btn-outline-secondary" name="action" value="qualify" type="submit">加入跟进</button>
+      <button class="btn btn-sm btn-outline-danger" name="action" value="invalid" type="submit">无效</button>
+    </form>
+    {% endif %}
+
+    <div class="clean-lead-list">
+      {% for row in board.rows %}
+      <article class="lead-result">
+        <div class="lead-result-score">
+          <label class="lead-select" title="选择这条线索">
+            {% if row.can_action %}
+            <input form="bulk-review-form" type="checkbox" name="row_ids" value="{{ row.id }}">
+            {% else %}
+            <input type="checkbox" disabled>
+            {% endif %}
+            <span></span>
+          </label>
+          <strong>{{ row.score }}</strong>
+          <span>{{ signal_labels.get(row.signal_type, row.signal_type) }}</span>
+        </div>
+        <div class="lead-result-main">
+          <a class="clean-lead-title" href="{{ row.detail_url or row.url }}">{{ row.title }}</a>
+          <div class="lead-judgement">
+            <span class="{{ row.screening_tone }}">{{ row.screening_label }}</span>
+            <span class="{{ row.time_tone }}">{{ row.time_label }}</span>
+            <span>{{ status_labels.get(row.status, row.status) }}</span>
+          </div>
+          <div class="clean-meta">
+            <span>来源：{{ row.source }}</span>
+            <span>类型：{{ row.customer_label }}</span>
+            <span>平台：{{ row.platform }}</span>
+          </div>
+          <div class="lead-time">
+            {% if row.published_at %}原文时间：{{ format_dt(row.published_at) }}{% else %}原文时间：未识别{% endif %}
+            {% if row.discovered_at %} · 发现：{{ format_dt(row.discovered_at) }}{% endif %}
+          </div>
+          <p>{{ row.why }}</p>
+        </div>
+        <div class="lead-result-next">
+          <span>下一步</span>
+          <p>{{ row.next_step }}</p>
+          {% if row.missing %}<em>缺：{{ row.missing }}</em>{% endif %}
+        </div>
+        <div class="clean-lead-actions">
+          <a class="btn btn-sm btn-outline-secondary" href="{{ row.url }}" target="_blank" rel="noreferrer">原文</a>
+          {% if row.can_action %}
+          <a class="btn btn-sm btn-primary" href="/mentions/{{ row.id }}">详情</a>
+          <form method="post" action="/leads/{{ row.id }}/action">
+            <input type="hidden" name="segment" value="{{ board.selected_segment }}">
+            <input type="hidden" name="scope" value="{{ board.selected_scope }}">
+            <input type="hidden" name="pool" value="{{ board.selected_pool }}">
+            <input type="hidden" name="min_score" value="{{ board.min_score }}">
+            <button class="btn btn-sm btn-outline-secondary" name="action" value="{{ row.action_kind }}" type="submit">{{ row.action_label }}</button>
+          </form>
+          <form method="post" action="/leads/{{ row.id }}/action">
+            <input type="hidden" name="segment" value="{{ board.selected_segment }}">
+            <input type="hidden" name="scope" value="{{ board.selected_scope }}">
+            <input type="hidden" name="pool" value="{{ board.selected_pool }}">
+            <input type="hidden" name="min_score" value="{{ board.min_score }}">
+            <button class="btn btn-sm btn-outline-danger" name="action" value="invalid" type="submit">无效</button>
+          </form>
+          {% else %}
+          <a class="btn btn-sm btn-primary" href="{{ row.detail_url }}">详情</a>
+          <a class="btn btn-sm btn-outline-secondary" href="/candidates?status=all">候选池</a>
+          {% endif %}
+        </div>
+      </article>
+      {% else %}
+      <div class="clean-empty">
+        <strong>暂时没有符合条件的线索</strong>
+        <span>可以降低最低分、换一个客户类型，或启动国内源采集补充新数据。</span>
+        <div>
+          <a class="btn btn-sm btn-primary" href="/leads?segment=all&scope=all&pool=usable&min_score=0">查看全部可用线索</a>
+          <a class="btn btn-sm btn-outline-secondary" href="/session-collector">检查平台登录</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

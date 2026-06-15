@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="clean-page">
+  <header class="clean-hero">
+    <div>
+      <div class="clean-eyebrow">维护工具</div>
+      <h1>工具箱</h1>
+      <p>日常获客只用自动采集、线索池、补联系和跟进。这里放不常用的维护入口，避免忘记，也不打扰主流程。</p>
+    </div>
+  </header>
+
+  <section class="clean-panel">
+    <div class="clean-section-head">
+      <div>
+        <h2>采集维护</h2>
+        <p>采集不正常、关键词不准、来源太少时再进这里。</p>
+      </div>
+    </div>
+    <div class="lead-segment-grid">
+      <a class="lead-option" href="/session-collector">
+        <strong>平台登录</strong>
+        <span>检查知乎、小红书、微博等登录会话，处理验证码或异常。</span>
+      </a>
+      <a class="lead-option" href="/platforms">
+        <strong>平台状态</strong>
+        <span>看哪些平台能采、哪些受阻、最近产出多少线索。</span>
+      </a>
+      <a class="lead-option" href="/sources">
+        <strong>采集源</strong>
+        <span>管理公开来源，启用、暂停或检查具体数据源。</span>
+      </a>
+      <a class="lead-option" href="/keywords">
+        <strong>搜索词</strong>
+        <span>调整动态住宅 IP、防关联、爬虫、店群等获客关键词。</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="clean-panel">
+    <div class="clean-section-head">
+      <div>
+        <h2>数据处理</h2>
+        <p>线索变多以后，用这些入口做复核、导入和分析。</p>
+      </div>
+    </div>
+    <div class="lead-segment-grid">
+      <a class="lead-option" href="/domestic-review">
+        <strong>线索质检</strong>
+        <span>复核旧线索、噪音、广告和边缘需求。</span>
+      </a>
+      <a class="lead-option" href="/quality-audit">
+        <strong>线索质量验收</strong>
+        <span>检查真线索有没有被误杀，垃圾线索有没有混进线索池。</span>
+      </a>
+      <a class="lead-option" href="/production-report">
+        <strong>&#29983;&#20135;&#39564;&#25910;</strong>
+        <span>&#30475;&#26469;&#28304;&#35268;&#27169;&#12289;&#32447;&#32034;&#36136;&#37327;&#12289;&#36807;&#28388;&#25439;&#32791;&#21644;&#21069; 50 &#26465;&#26679;&#26412;&#65292;&#21028;&#26029;&#26159;&#21542;&#33021;&#25237;&#20837;&#23454;&#25112;&#12290;</span>
+      </a>
+      <a class="lead-option" href="/prospects">
+        <strong>客户库</strong>
+        <span>查看系统合并后的目标客户。</span>
+      </a>
+      <a class="lead-option" href="/imports">
+        <strong>导入线索</strong>
+        <span>把私域、表格或人工整理的线索导入系统。</span>
+      </a>
+      <a class="lead-option" href="/performance">
+        <strong>效果分析</strong>
+        <span>看平台和搜索词表现，判断哪些来源值得继续跑。</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="clean-panel">
+    <div class="clean-section-head">
+      <div>
+        <h2>系统</h2>
+        <p>配置、日报和后台任务，平时不用频繁打开。</p>
+      </div>
+    </div>
+    <div class="lead-segment-grid">
+      <a class="lead-option" href="/tasks">
+        <strong>任务明细</strong>
+        <span>查看后台队列和待处理事项。</span>
+      </a>
+      <a class="lead-option" href="/report">
+        <strong>日报</strong>
+        <span>生成每日线索和跟进摘要。</span>
+      </a>
+      <a class="lead-option" href="/settings">
+        <strong>设置</strong>
+        <span>配置 Token、通知和基础参数。</span>
+      </a>
+      <a class="lead-option" href="/today">
+        <strong>今日作战</strong>
+        <span>高级任务视图；日常用户可以先不用。</span>
+      </a>
+    </div>
+  </section>
+</div>
+{% endblock %}

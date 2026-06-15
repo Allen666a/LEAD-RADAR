@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block content %}
+{% set total_candidates = platforms | sum(attribute='candidates') %}
+{% set total_usable = platforms | sum(attribute='usable_mentions') %}
+{% set total_high = platforms | sum(attribute='high_value_mentions') %}
+{% set total_blocked = platforms | sum(attribute='blocked_sources') %}
+
+<div class="card card-body page-hero">
+  <div>
+    <div class="eyebrow">平台验收</div>
+    <h1>哪些来源真能获客</h1>
+    <p class="muted">按平台汇总采集、候选、入池、旧帖、噪音和受阻情况。看这里决定加码、降噪、暂停还是继续观察。</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-primary" href="/leads">去线索池</a>
+    <a class="btn btn-outline-secondary" href="/candidates?status=all">看候选池</a>
+    <a class="btn btn-outline-secondary" href="/platforms.csv">导出 CSV</a>
+  </div>
+</div>
+
+<div class="stats-grid compact-stats">
+  <div class="stat">
+    <strong>{{ platforms | length }}</strong>
+    <span>平台</span>
+  </div>
+  <div class="stat">
+    <strong>{{ total_candidates }}</strong>
+    <span>候选</span>
+  </div>
+  <div class="stat">
+    <strong>{{ total_usable }}</strong>
+    <span>可用线索</span>
+  </div>
+  <div class="stat">
+    <strong>{{ total_high }}</strong>
+    <span>高价值</span>
+  </div>
+  <div class="stat">
+    <strong>{{ total_blocked }}</strong>
+    <span>受阻来源</span>
+  </div>
+</div>
+
+<div class="card card-body">
+  <div class="section-head">
+    <div>
+      <h2>验收结论</h2>
+      <p class="muted">“加码”优先跑，“降噪”先改过滤，“受阻”先冷却或处理登录，不要盲目重试。</p>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table">
+      <thead>
+        <tr>
+          <th>平台</th>
+          <th>结论</th>
+          <th>来源</th>
+          <th>候选</th>
+          <th>线索</th>
+          <th>主要损耗</th>
+          <th>详情</th>
+          <th>调度</th>
+          <th>建议</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in platforms %}
+        <tr>
+          <td class="platform-cell">
+            <strong>{{ row.name }}</strong>
+            <span class="muted">{{ row.mode }}</span>
+            <span class="muted">{{ row.note }}</span>
+          </td>
+          <td>
+            <span class="score-pill {{ 'good' if row.status in ['加码','观察'] else 'warn' if row.status in ['降噪','受阻','需清理'] else '' }}">{{ row.quality_score }}</span>
+            <div class="mt-1">
+              <span class="pill {{ 'good' if row.status == '加码' else 'warn' if row.status in ['降噪','受阻','需清理'] else '' }}">{{ row.status }}</span>
+            </div>
+          </td>
+          <td>
+            <strong>{{ row.enabled_sources }} / {{ row.source_count }}</strong>
+            <div class="muted">成功 {{ row.success_count }} / 失败 {{ row.failure_count }}</div>
+            {% if row.blocked_sources %}
+            <div class="muted">受阻 {{ row.blocked_sources }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <strong>{{ row.candidates }}</strong>
+            <div class="muted">入池 {{ row.candidate_accepted }} / 复核 {{ row.candidate_review }}</div>
+            {% if row.candidate_duplicate %}
+            <div class="muted">重复 {{ row.candidate_duplicate }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <strong>{{ row.usable_mentions }}</strong>
+            <div class="muted">高价值 {{ row.high_value_mentions }}</div>
+            {% if row.review_mentions or row.invalid_mentions %}
+            <div class="muted">复核 {{ row.review_mentions }} / 无效 {{ row.invalid_mentions }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <div>旧帖 {{ row.old_content }}</div>
+            <div>非详情 {{ row.not_detail }}</div>
+            <div>缺时间 {{ row.missing_time }}</div>
+            <div>低意图 {{ row.low_intent }}</div>
+          </td>
+          <td>
+            <div>详情成功 {{ row.detail_ok }}</div>
+            <div>受阻 {{ row.detail_blocked }}</div>
+            <div>失败 {{ row.detail_failed }}</div>
+            <div>延后 {{ row.detail_deferred }}</div>
+          </td>
+          <td>
+            {% if row.next_collect_at %}
+            <div>下次 {{ row.next_collect_at.strftime('%m-%d %H:%M') }}</div>
+            {% else %}
+            <div class="muted">暂无下次</div>
+            {% endif %}
+            {% if row.cooldown_until %}
+            <div class="muted">冷却到 {{ row.cooldown_until.strftime('%m-%d %H:%M') }}</div>
+            {% endif %}
+            {% if row.last_checked_at %}
+            <div class="muted">最近 {{ row.last_checked_at.strftime('%m-%d %H:%M') }}</div>
+            {% endif %}
+          </td>
+          <td class="action-cell">
+            <div>{{ row.recommended_action }}</div>
+            {% if row.last_error %}
+            <details class="mt-1">
+              <summary>最近错误</summary>
+              <div class="muted text-wrap">{{ row.last_error }}</div>
+            </details>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

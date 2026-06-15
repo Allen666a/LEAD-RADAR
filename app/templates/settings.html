@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card card-body" style="margin-bottom: 14px">
+  <strong>配置检查</strong>
+  <div class="muted">这里只显示是否已配置，不显示 token 内容。</div>
+</div>
+
+<table class="table table-vcenter card-table">
+  <thead>
+    <tr>
+      <th>配置项</th>
+      <th>状态</th>
+      <th>用途</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>GITHUB_TOKEN</td>
+      <td><span class="pill {{ 'good' if settings_status.github_token else 'warn' }}">{{ "已配置" if settings_status.github_token else "未配置" }}</span></td>
+      <td class="muted">提升 GitHub Issues 搜索额度，减少 rate limit。</td>
+    </tr>
+    <tr>
+      <td>GITEE_TOKEN</td>
+      <td><span class="pill {{ 'good' if settings_status.gitee_token else 'warn' }}">{{ "已配置" if settings_status.gitee_token else "未配置" }}</span></td>
+      <td class="muted">提升 Gitee Issues 搜索稳定性，减少 403。</td>
+    </tr>
+    <tr>
+      <td>WEWORK_WEBHOOK_URL</td>
+      <td><span class="pill {{ 'good' if settings_status.wework_webhook_url else 'warn' }}">{{ "已配置" if settings_status.wework_webhook_url else "未配置" }}</span></td>
+      <td class="muted">高意向线索推送到企业微信。</td>
+    </tr>
+    <tr>
+      <td>RSSHUB_BASE_URL</td>
+      <td>{{ settings_status.rsshub_base_url }}</td>
+      <td class="muted">RSSHub 数据源基础地址。</td>
+    </tr>
+    <tr>
+      <td>COLLECTOR_INTERVAL_MINUTES</td>
+      <td>{{ settings_status.collector_interval_minutes }}</td>
+      <td class="muted">后台定时采集间隔。</td>
+    </tr>
+    <tr>
+      <td>HIGH_INTENT_THRESHOLD</td>
+      <td>{{ settings_status.high_intent_threshold }}</td>
+      <td class="muted">触发高意向通知的分数阈值。</td>
+    </tr>
+  </tbody>
+</table>
+{% endblock %}

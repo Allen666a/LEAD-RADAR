@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="clean-page">
+  <header class="clean-hero">
+    <div>
+      <div class="clean-eyebrow">候选详情</div>
+      <h1>{{ candidate.title }}</h1>
+      <p>
+        {{ candidate.source_name or candidate.platform or candidate.source_kind }}
+        {% if candidate.published_at %} · 原文时间 {{ format_dt(candidate.published_at) }}{% else %} · 原文时间未识别{% endif %}
+        {% if candidate.fetched_at %} · 发现 {{ format_dt(candidate.fetched_at) }}{% endif %}
+      </p>
+    </div>
+    <div class="clean-actions">
+      <a class="btn btn-outline-secondary" href="/leads?segment=all&scope=all&pool=usable&min_score=0">返回线索池</a>
+      <a class="btn btn-primary" href="{{ candidate.canonical_url }}" target="_blank" rel="noreferrer">打开原文</a>
+    </div>
+  </header>
+
+  <section class="clean-panel">
+    <div class="lead-judgement">
+      <span class="warn">待判断候选</span>
+      {% if candidate.published_at and candidate.published_at.year >= 2026 %}
+      <span class="good">2026 新候选</span>
+      {% else %}
+      <span class="warn">时间待核验</span>
+      {% endif %}
+      <span>{{ candidate.platform or candidate.source_kind or "-" }}</span>
+      {% if candidate.score %}<span>分数 {{ candidate.score }}</span>{% endif %}
+      {% if candidate.signal_type %}<span>{{ signal_labels.get(candidate.signal_type, candidate.signal_type) }}</span>{% endif %}
+    </div>
+  </section>
+
+  <section class="detail-grid">
+    <div>
+      <div class="card card-body mb-3">
+        <div class="section-title mb-2">为什么需要人工判断</div>
+        <div class="content-box">
+          {{ candidate.gate_reason or candidate.detail_reason or candidate.failure_type or "系统认为它可能有动态住宅 IP、代理、防关联或账号环境相关信号，但还不足以直接进入正式跟进。" }}
+        </div>
+      </div>
+
+      <div class="card card-body mb-3">
+        <div class="section-title mb-2">候选原文摘要</div>
+        <div class="content-box">{{ candidate.content or "没有抓到摘要，请打开原文判断。" }}</div>
+      </div>
+
+      <div class="card card-body mb-3">
+        <div class="section-title mb-2">详情页摘录</div>
+        <div class="content-box">{{ candidate.detail_excerpt or "没有抓到详情页正文，可能被登录、验证、频控或页面结构拦住。" }}</div>
+      </div>
+    </div>
+
+    <aside>
+      <div class="card card-body mb-3">
+        <div class="section-title mb-2">来源证据</div>
+        <div class="table-responsive">
+          <table class="table">
+            <tbody>
+              <tr><th style="width: 120px">来源</th><td>{{ candidate.source_name or "-" }}</td></tr>
+              <tr><th>平台</th><td>{{ candidate.platform or candidate.source_kind or "-" }}</td></tr>
+              <tr><th>状态</th><td>{{ candidate.status or "-" }}</td></tr>
+              <tr><th>详情状态</th><td>{{ candidate.detail_status or "not_checked" }}</td></tr>
+              <tr><th>过滤原因</th><td>{{ candidate.failure_type or "-" }}</td></tr>
+              <tr><th>原文时间</th><td>{% if candidate.published_at %}{{ format_dt(candidate.published_at) }}{% else %}未识别{% endif %}</td></tr>
+              <tr><th>发现时间</th><td>{% if candidate.fetched_at %}{{ format_dt(candidate.fetched_at) }}{% else %}-{% endif %}</td></tr>
+              <tr><th>原文链接</th><td><a href="{{ candidate.canonical_url }}" target="_blank" rel="noreferrer">{{ candidate.canonical_url }}</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card card-body mb-3">
+        <div class="section-title mb-2">怎么处理</div>
+        <ol class="mb-0">
+          <li>先打开原文，确认它是不是客户真实需求。</li>
+          <li>如果是广告、教程、同行软文，回到线索池标无效。</li>
+          <li>如果是真需求，优先找微信、QQ、Telegram、邮箱或主页。</li>
+          <li>确认联系方式后再进入跟进，不要直接群发。</li>
+        </ol>
+      </div>
+
+      {% if candidate.mention_id %}
+      <div class="card card-body mb-3">
+        <div class="section-title mb-2">已生成正式线索</div>
+        <a class="btn btn-primary" href="/mentions/{{ candidate.mention_id }}">查看正式详情</a>
+      </div>
+      {% endif %}
+    </aside>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">线索质量验收</h1>
+  <div class="page-subtitle">用来检查两件事：真线索有没有被误杀，垃圾线索有没有混进线索池。</div>
+</div>
+
+<div class="row row-cards mb-3">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card"><div class="card-body"><div class="h1 mb-1">{{ board.stats.usable_mentions }}</div><div class="text-secondary">可用线索</div></div></div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card"><div class="card-body"><div class="h1 mb-1">{{ board.stats.accepted_candidates + board.stats.review_candidates }}</div><div class="text-secondary">入池/待复核候选</div></div></div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card"><div class="card-body"><div class="h1 mb-1">{{ board.stats.possible_false_negatives }}</div><div class="text-secondary">疑似误杀</div></div></div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card"><div class="card-body"><div class="h1 mb-1">{{ board.stats.questionable_passed }}</div><div class="text-secondary">疑似误入池</div></div></div>
+  </div>
+</div>
+
+<section class="card card-body mb-3">
+  <div class="d-flex flex-wrap gap-2 align-items-start justify-content-between">
+    <div>
+      <strong>当前判断</strong>
+      <div class="text-secondary">不要只看线索数量，要看误杀和误入。疑似误杀需要人工抽样，确认规则是否过严。</div>
+    </div>
+    <div class="btn-list">
+      <a class="btn btn-sm btn-primary" href="/candidates?status=review">看待复核</a>
+      <a class="btn btn-sm btn-outline-secondary" href="/candidates?status=rejected">看已过滤</a>
+      <a class="btn btn-sm btn-outline-secondary" href="/leads?segment=all&scope=all&pool=usable&min_score=0">看线索池</a>
+    </div>
+  </div>
+  <ol class="mt-3 mb-0">
+    {% for item in board.recommendations %}
+    <li>{{ item }}</li>
+    {% endfor %}
+  </ol>
+</section>
+
+<div class="row row-cards mb-3">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header"><h2 class="card-title">过滤原因分布</h2></div>
+      <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+          {% for key, count in board.failure_counts.items() %}
+          <span class="badge bg-yellow-lt">{{ key }} {{ count }}</span>
+          {% else %}
+          <span class="text-secondary">暂无过滤原因</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header"><h2 class="card-title">候选来源分布</h2></div>
+      <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+          {% for key, count in board.source_counts.items() %}
+          <span class="badge bg-blue-lt">{{ key or "unknown" }} {{ count }}</span>
+          {% else %}
+          <span class="text-secondary">暂无来源数据</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% macro audit_list(title, subtitle, rows, tone) %}
+<section class="card mb-3">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title">{{ title }}</h2>
+      <div class="text-secondary">{{ subtitle }}</div>
+    </div>
+  </div>
+  <div class="list-group list-group-flush">
+    {% for row in rows %}
+    <div class="list-group-item">
+      <div class="row g-3 align-items-start">
+        <div class="col-md-1">
+          <span class="score {{ 'mid' if row.score < 70 else '' }}">{{ row.score }}</span>
+        </div>
+        <div class="col-md-6">
+          <a class="title-link" href="{{ row.url }}" target="_blank" rel="noreferrer">{{ row.title }}</a>
+          <div class="text-secondary mt-1">
+            {{ row.platform or "-" }} · {{ row.source or "-" }} · 原文 {{ format_dt(row.published_at) }}
+          </div>
+          <div class="mt-2">{{ row.risk }}</div>
+        </div>
+        <div class="col-md-3">
+          <span class="badge {{ tone }}">{{ row.verdict }}</span>
+          <div class="text-secondary mt-2 clamp-3">{{ row.reason }}</div>
+        </div>
+        <div class="col-md-2 text-md-end">
+          {% if row.kind == "mention" %}
+          <a class="btn btn-sm btn-outline-secondary" href="/mentions/{{ row.id }}">详情</a>
+          {% endif %}
+          <a class="btn btn-sm btn-outline-secondary" href="{{ row.url }}" target="_blank" rel="noreferrer">原文</a>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="list-group-item text-secondary">暂无。</div>
+    {% endfor %}
+  </div>
+</section>
+{% endmacro %}
+
+{{ audit_list("疑似误杀", "这些被过滤或待复核，但文本里有动态住宅 IP、代理、防关联、爬虫痛点或购买语言，优先人工抽样。", board.possible_false_negatives, "bg-yellow-lt") }}
+{{ audit_list("疑似误入线索池", "这些已经进入可用池，但可能是广告、旧内容或核心证据偏弱，需要避免污染销售动作。", board.questionable_passed, "bg-red-lt") }}
+{{ audit_list("当前优先可用线索", "这不是最终成交判断，只是系统认为优先看的线索。真正获客还要人工验证联系方式和场景。", board.top_usable, "bg-green-lt") }}
+{% endblock %}

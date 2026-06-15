@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="stats">
+  <div class="stat"><strong>{{ stats.total }}</strong><span class="muted">研究客户</span></div>
+  <div class="stat"><strong>{{ stats.high }}</strong><span class="muted">高概率</span></div>
+  <div class="stat"><strong>{{ stats.contactable }}</strong><span class="muted">可联系</span></div>
+  <div class="stat"><strong>{{ stats.needs_review }}</strong><span class="muted">需审核</span></div>
+</section>
+
+<div class="card card-body" style="margin-bottom:14px">
+  <strong>客户研究 Agent</strong>
+  <div class="muted">把客户画像、原文证据、动态住宅 IP 匹配、联系方式和风险合成销售简报。先判断该不该聊，再决定怎么开口。</div>
+  <form method="get" action="/research" class="actions" style="margin-top:10px">
+    <select class="form-select form-select-sm" name="mode">
+      <option value="priority" {% if filters.mode == "priority" %}selected{% endif %}>优先客户</option>
+      <option value="contactable" {% if filters.mode == "contactable" %}selected{% endif %}>已有联系方式</option>
+      <option value="missing_contact" {% if filters.mode == "missing_contact" %}selected{% endif %}>缺联系方式</option>
+      <option value="high_probability" {% if filters.mode == "high_probability" %}selected{% endif %}>高概率</option>
+    </select>
+    <select class="form-select form-select-sm" name="platform">
+      <option value="domestic" {% if filters.platform == "domestic" %}selected{% endif %}>国内优先</option>
+      <option value="all" {% if filters.platform == "all" %}selected{% endif %}>全部平台</option>
+      {% for item in platforms %}
+      <option value="{{ item }}" {% if filters.platform == item %}selected{% endif %}>{{ item }}</option>
+      {% endfor %}
+    </select>
+    <input class="form-control form-control-sm" name="min_score" type="number" min="0" max="100" value="{{ filters.min_score }}" style="width:90px">
+    <button class="btn btn-sm btn-outline-secondary" type="submit">筛选</button>
+    <a class="btn btn-sm btn-outline-secondary" href="/research.csv?mode={{ filters.mode }}&platform={{ filters.platform }}&min_score={{ filters.min_score }}">导出 CSV</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/cadence">销售节奏</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/contact-workbench">补联系方式</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/today">今日跟进</a>
+  </form>
+</div>
+
+<div class="card table-responsive">
+<table class="table table-vcenter card-table source-table">
+  <colgroup>
+    <col style="width:90px">
+    <col style="width:230px">
+    <col style="width:120px">
+    <col style="width:310px">
+    <col style="width:210px">
+    <col style="width:260px">
+    <col style="width:300px">
+    <col style="width:180px">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>优先级</th>
+      <th>客户</th>
+      <th>概率</th>
+      <th>销售摘要</th>
+      <th>痛点/缺口</th>
+      <th>首轮问题</th>
+      <th>开场白</th>
+      <th>下一步</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for brief in briefs %}
+    {% set prospect = brief.prospect %}
+    <tr>
+      <td>
+        <span class="score {{ 'mid' if brief.priority_score < 80 else '' }}">{{ brief.priority_score }}</span>
+        <div class="muted">线索 {{ prospect.lead_score }}</div>
+      </td>
+      <td>
+        <a class="title-link" href="/prospects/{{ prospect.id }}">{{ prospect.display_name }}</a>
+        <div class="muted">{{ prospect.platform }} | {{ customer_type_labels.get(prospect.customer_type, prospect.customer_type) }}</div>
+        <div class="muted">{{ product_fit_labels.get(prospect.product_fit, prospect.product_fit) }}</div>
+        {% if prospect.profile_url %}<a href="{{ prospect.profile_url }}" target="_blank">主页</a>{% endif %}
+      </td>
+      <td>
+        <span class="pill {{ 'good' if brief.deal_probability in ['高','中高'] else 'warn' }}">{{ brief.deal_probability }}</span>
+        <div class="muted">{{ "可联系" if brief.has_contact else "缺联系方式" }}</div>
+      </td>
+      <td>
+        <div class="clamp-3" title="{{ brief.account_summary }}">{{ brief.account_summary }}</div>
+        <div class="muted clamp-2" title="{{ brief.evidence_lines|join(' / ') }}">{{ brief.evidence_lines[0] if brief.evidence_lines else "-" }}</div>
+      </td>
+      <td>
+        <strong>痛点</strong>
+        <div class="muted clamp-2">{{ brief.pain_points|join("、") }}</div>
+        <strong>缺口</strong>
+        <div class="muted clamp-2">{{ brief.missing_fields|join("、") }}</div>
+      </td>
+      <td>
+        {% for question in brief.qualification_questions[:3] %}
+        <div class="clamp-2">{{ loop.index }}. {{ question }}</div>
+        {% endfor %}
+      </td>
+      <td>
+        <div class="clamp-3" title="{{ brief.opener }}">{{ brief.opener }}</div>
+      </td>
+      <td>
+        {% for action in brief.next_actions %}
+        <div class="clamp-2">{{ action }}</div>
+        {% endfor %}
+        <div class="actions" style="margin-top:8px">
+          <a class="btn btn-sm btn-outline-secondary" href="/prospects/{{ prospect.id }}">详情</a>
+          {% if not brief.has_contact %}<a class="btn btn-sm btn-outline-secondary" href="/contact-workbench?platform={{ prospect.platform }}&mode=missing&min_score=0">补联系方式</a>{% endif %}
+        </div>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="muted">暂无符合条件的客户。</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

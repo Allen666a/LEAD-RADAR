@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="clean-page">
+  <header class="clean-hero">
+    <div>
+      <div class="clean-eyebrow">Lead Radar</div>
+      <h1>{{ p5_title or "今天该联系谁" }}</h1>
+      <p>{{ p5_subtitle or "系统已经筛过一遍，只把今天最值得看的客户放在这里。" }}</p>
+    </div>
+    <div class="clean-actions">
+      <a class="btn btn-outline-secondary" href="/session-collector#session-platform-tasks"><i class="ti ti-login-2 me-1"></i>找新线索</a>
+      <a class="btn btn-outline-secondary" href="/feedback"><i class="ti ti-refresh-dot me-1"></i>记录结果</a>
+      <a class="btn btn-primary" href="{{ p5_export_path or '/p5-workbench.csv' }}?mode={{ filters.mode }}&platform={{ filters.platform }}&min_score={{ filters.min_score }}"><i class="ti ti-download me-1"></i>导出清单</a>
+    </div>
+  </header>
+
+  <section class="clean-summary" aria-label="今日概览">
+    <div><strong>{{ board.summary.today_tasks }}</strong><span>今天建议联系</span></div>
+    <div><strong>{{ board.summary.hot_tasks }}</strong><span>高优先级</span></div>
+    <div><strong>{{ board.summary.due_followups }}</strong><span>到期复访</span></div>
+    <div><strong>{{ "%.0f%%"|format(board.summary.feedback_coverage * 100) }}</strong><span>反馈覆盖</span></div>
+  </section>
+
+  <section class="clean-panel">
+    {% if message %}
+    <div class="alert alert-success mb-3">{{ message }}</div>
+    {% endif %}
+    <form method="get" action="{{ p5_filter_action or '/p5-workbench' }}" class="clean-filter">
+      <select name="mode" class="form-select">
+        <option value="today" {% if filters.mode == "today" %}selected{% endif %}>今天要处理</option>
+        <option value="first_touch" {% if filters.mode == "first_touch" %}selected{% endif %}>第一次联系</option>
+        <option value="follow_up_due" {% if filters.mode == "follow_up_due" %}selected{% endif %}>到期复访</option>
+        <option value="send_trial" {% if filters.mode == "send_trial" %}selected{% endif %}>发送测试</option>
+        <option value="trial_follow_up" {% if filters.mode == "trial_follow_up" %}selected{% endif %}>测试后跟进</option>
+        <option value="contact_enrich" {% if filters.mode == "contact_enrich" %}selected{% endif %}>缺联系方式</option>
+        <option value="all" {% if filters.mode == "all" %}selected{% endif %}>全部</option>
+      </select>
+      <select name="platform" class="form-select">
+        <option value="domestic" {% if filters.platform == "domestic" %}selected{% endif %}>国内优先</option>
+        <option value="all" {% if filters.platform == "all" %}selected{% endif %}>全部平台</option>
+        {% for item in platforms %}
+        <option value="{{ item }}" {% if filters.platform == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+      <input class="form-control" name="min_score" type="number" min="0" max="100" value="{{ filters.min_score }}" aria-label="最低分">
+      <button class="btn btn-primary" type="submit"><i class="ti ti-refresh me-1"></i>刷新</button>
+    </form>
+  </section>
+
+  <section class="clean-panel">
+    <div class="clean-section-head">
+      <div>
+        <h2>先做这 3 件事</h2>
+        <p>不用自己判断优先级，按顺序处理即可。</p>
+      </div>
+    </div>
+    <div class="clean-action-list">
+      {% for action in board.p14_actions[:3] %}
+      <article class="clean-action">
+        <div class="clean-rank">{{ action.priority }}</div>
+        <div>
+          <h3>{{ action.title }}</h3>
+          <p>{{ action.reason }}</p>
+        </div>
+        <div class="clean-next">
+          <span>下一步</span>
+          <p>{{ action.next_step }}</p>
+        </div>
+        <a class="btn btn-sm btn-primary" href="{{ action.url }}">处理</a>
+      </article>
+      {% else %}
+      <div class="clean-empty">暂无优先动作。</div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="clean-panel">
+    <div class="clean-section-head">
+      <div>
+        <h2>待联系客户</h2>
+        <p>这些是当前最值得人工确认和联系的目标。</p>
+      </div>
+      <a class="btn btn-outline-secondary btn-sm" href="/contact-workbench?platform={{ filters.platform }}&mode=missing&min_score={{ filters.min_score }}">只看缺联系方式</a>
+    </div>
+
+    <div class="clean-lead-list">
+      {% for task in board.tasks %}
+      {% set prospect = task.prospect %}
+      {% set t = prospect_time(prospect) %}
+      <article class="clean-lead">
+        <div class="clean-lead-score">
+          <strong>{{ task.priority }}</strong>
+          <span>{{ task.due_label }}</span>
+        </div>
+        <div class="clean-lead-main">
+          <a class="clean-lead-title" href="/prospects/{{ prospect.id }}">{{ p5_prospect_display_name(prospect) }}</a>
+          <div class="clean-meta">
+            <span>{{ prospect.platform }}</span>
+            <span>{{ customer_type_labels.get(prospect.customer_type, prospect.customer_type) }}</span>
+            <span>时效 {{ t.label }}</span>
+          </div>
+          <p>{{ task.brief.account_summary }}</p>
+          <div class="clean-evidence">{{ prospect.evidence or prospect.keywords }}</div>
+        </div>
+        <div class="clean-lead-plan">
+          <span>建议动作：{{ task.label }}</span>
+          {% for item in task.checklist[:3] %}
+          <p>{{ loop.index }}. {{ item }}</p>
+          {% endfor %}
+        </div>
+        <div class="clean-lead-actions">
+          {% if prospect.profile_url %}
+          <a class="btn btn-sm btn-outline-secondary" href="{{ prospect.profile_url }}" target="_blank">原文</a>
+          {% endif %}
+          <div class="dropdown">
+            <button class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown" type="button">处理</button>
+            <div class="dropdown-menu dropdown-menu-end">
+              <form method="post" action="/p5-workbench/action">
+                <input type="hidden" name="prospect_id" value="{{ prospect.id }}">
+                <input type="hidden" name="mode" value="{{ filters.mode }}">
+                <input type="hidden" name="platform" value="{{ filters.platform }}">
+                <input type="hidden" name="min_score" value="{{ filters.min_score }}">
+                <input type="hidden" name="return_path" value="{{ request.url.path }}">
+                <button class="dropdown-item" name="action" value="{{ task.primary_action }}" type="submit">{{ task.primary_action_label }}</button>
+                <button class="dropdown-item" name="action" value="contacted" type="submit">已触达</button>
+                <button class="dropdown-item" name="action" value="trial_sent" type="submit">已发测试</button>
+                <button class="dropdown-item" name="action" value="schedule_3" type="submit">3天复访</button>
+                <button class="dropdown-item text-danger" name="action" value="invalid" type="submit">无效</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </article>
+      {% else %}
+      <div class="clean-empty">暂无今日目标。可以降低分数阈值，或先去平台采集补充国内平台痛点线索。</div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="clean-grid">
+    <div class="clean-panel">
+      <div class="clean-section-head">
+        <div>
+          <h2>系统建议</h2>
+          <p>告诉你哪些搜索词和来源值得继续用。</p>
+        </div>
+      </div>
+      <div class="clean-mini-list">
+        <h3>继续加大搜索</h3>
+        {% for row in board.high_keywords[:4] %}
+        <div><span>{{ row.keyword }}</span><strong>{{ row.strategy_score }}</strong></div>
+        {% else %}
+        <p>暂无明显高产关键词。</p>
+        {% endfor %}
+      </div>
+      <div class="clean-mini-list">
+        <h3>需要暂停或改写</h3>
+        {% for row in board.pause_keywords[:4] %}
+        <div><span>{{ row.keyword }}</span><strong>{{ row.mentions }}</strong></div>
+        {% else %}
+        <p>暂无必须暂停的关键词。</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="clean-panel">
+      <div class="clean-section-head">
+        <div>
+          <h2>需要处理的平台</h2>
+          <p>只显示会影响找线索的平台问题。</p>
+        </div>
+      </div>
+      <div class="clean-mini-list">
+        {% for item in board.platform_issues[:6] %}
+        <div>
+          <span><strong>{{ item.label }}</strong><small>{{ item.failure_code or item.login_label }}</small></span>
+          <em>{{ item.inserted }} / {{ item.fetched }}</em>
+        </div>
+        {% else %}
+        <p>暂无明显阻塞。</p>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="clean-panel">
+    <div class="clean-section-head">
+      <div>
+        <h2>结果反馈</h2>
+        <p>把成交、无效、已测试记录下来，系统会越筛越准。</p>
+      </div>
+    </div>
+    <div class="clean-summary compact">
+      <div><strong>{{ board.summary.active_prospects }}</strong><span>可跟目标</span></div>
+      <div><strong>{{ board.summary.missing_contact_tasks }}</strong><span>缺联系方式</span></div>
+      <div><strong>{{ board.summary.trial_pending }}</strong><span>待测后跟进</span></div>
+      <div><strong>{{ board.summary.session_blockers }}</strong><span>采集阻塞</span></div>
+    </div>
+    <ol class="clean-recommendations">
+      {% for item in board.feedback.recommendations %}
+      <li>{{ item }}</li>
+      {% endfor %}
+    </ol>
+  </section>
+</div>
+{% endblock %}

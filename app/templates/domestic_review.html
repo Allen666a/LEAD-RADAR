@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="stats">
+  <div class="stat"><strong>{{ stats.total }}</strong><span class="muted">待质检线索</span></div>
+  <div class="stat"><strong>{{ stats.priority }}</strong><span class="muted">优先跟进</span></div>
+  <div class="stat"><strong>{{ stats.need_contact }}</strong><span class="muted">需补联系方式</span></div>
+  <div class="stat"><strong>{{ stats.risk }}</strong><span class="muted">需人工审核</span></div>
+</section>
+
+<div class="card card-body mb-3">
+  <div class="section-title">国内线索质检台</div>
+  <div class="muted mt-1">只看国内公开源和私域导入线索，先判断能不能跟进，再进入销售动作。</div>
+  {% if message %}
+  <div class="pill good mt-2">{{ message }}</div>
+  {% endif %}
+  <form method="get" action="/domestic-review" class="actions mt-3">
+    <select class="form-select form-select-sm" name="status">
+      <option value="open" {% if filters.status == "open" %}selected{% endif %}>待处理</option>
+      <option value="new" {% if filters.status == "new" %}selected{% endif %}>新线索</option>
+      <option value="reviewed" {% if filters.status == "reviewed" %}selected{% endif %}>已查看</option>
+      <option value="contacted" {% if filters.status == "contacted" %}selected{% endif %}>已联系</option>
+      <option value="invalid" {% if filters.status == "invalid" %}selected{% endif %}>无效</option>
+    </select>
+    <input class="form-control form-control-sm" name="min_score" type="number" min="0" max="100" value="{{ filters.min_score }}" style="width:90px">
+    <button class="btn btn-sm btn-outline-secondary" type="submit">筛选</button>
+    <a class="btn btn-sm btn-outline-secondary" href="/domestic-review.csv?status={{ filters.status }}&min_score={{ filters.min_score }}">导出 CSV</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/imports">导入私域线索</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/pipeline">进入跟进池</a>
+  </form>
+</div>
+
+<form method="post" action="/domestic-review/bulk">
+<input type="hidden" name="status" value="{{ filters.status }}">
+<input type="hidden" name="min_score" value="{{ filters.min_score }}">
+
+<div class="card card-body actions mb-3">
+  <select class="form-select form-select-sm" name="action">
+    <option value="">批量动作</option>
+    <option value="qualify">标记可跟进</option>
+    <option value="need_contact">需要补联系方式</option>
+    <option value="contacted">已触达</option>
+    <option value="follow_up">3 天后复访</option>
+    <option value="invalid">标记无效</option>
+  </select>
+  <button class="btn btn-sm btn-outline-secondary" type="submit">应用到选中线索</button>
+</div>
+
+<div class="review-queue">
+  {% for row in rows %}
+  {% set mention = row.mention %}
+  {% set prospect = row.prospect %}
+  {% if mention %}{% set t = mention_time(mention) %}{% endif %}
+  <article class="review-card">
+    <div>
+      <input class="form-check-input" type="checkbox" name="row_ids" value="{{ row.row_id }}">
+      <div class="mt-2"><span class="score {{ 'mid' if row.review_score < 80 else '' }}">{{ row.review_score }}</span></div>
+    </div>
+
+    <div class="review-text">
+      {% if mention %}
+      <a class="review-title" href="/mentions/{{ mention.id }}">{{ row.title }}</a>
+      {% else %}
+      <a class="review-title" href="{{ row.url or '#' }}" {% if row.url %}target="_blank" rel="noreferrer"{% endif %}>{{ row.title }}</a>
+      {% endif %}
+      <div class="actions mt-2">
+        <span class="pill {{ 'good' if row.label in ['优先跟进','可跟进'] else 'warn' }}">{{ row.label }}</span>
+        {% if mention %}<span class="pill {{ t.class }}">时效：{{ t.label }}</span>{% endif %}
+      </div>
+      {% if row.url %}<div class="mt-2 clickable-text">{{ linkify(row.url) }}</div>{% endif %}
+      {% if mention %}
+      <div class="cell-note mt-2">线索分 {{ mention.score }} · {{ t.basis }} {{ format_dt(t.time) }} · 发现 {{ t.discovered }}</div>
+      {% endif %}
+    </div>
+
+    <div class="review-text">
+      <div class="review-section-title">来源 / 信号</div>
+      <div>{{ row.source_name }}</div>
+      {% if mention %}
+      <div class="mt-2"><span class="pill">{{ signal_labels.get(mention.signal_type, mention.signal_type) }}</span></div>
+      <div class="muted">{{ mention.risk_level }}</div>
+      {% else %}
+      <span class="pill">私域导入</span>
+      {% endif %}
+    </div>
+
+    <div class="review-text">
+      <div class="review-section-title">客户 / 联系方式</div>
+      {% if prospect %}
+      <a class="title-link" href="/prospects/{{ prospect.id }}">{{ prospect.display_name }}</a>
+      <div class="muted">{{ product_fit_labels.get(prospect.product_fit, prospect.product_fit) }}</div>
+      <div class="muted">{{ customer_type_labels.get(prospect.customer_type, prospect.customer_type) }}</div>
+      {% if prospect.wechat %}<div>微信：{{ prospect.wechat }}</div>{% endif %}
+      {% if prospect.telegram %}<div>TG：{{ prospect.telegram }}</div>{% endif %}
+      {% if prospect.email %}<div>{{ linkify(prospect.email) }}</div>{% endif %}
+      {% if prospect.website %}<div class="clickable-text">{{ linkify(prospect.website) }}</div>{% endif %}
+      {% if not row.has_contact %}<span class="pill warn mt-2">缺联系方式</span>{% endif %}
+      {% else %}
+      <span class="muted">未聚合</span>
+      {% endif %}
+    </div>
+
+    <div class="review-text">
+      <div class="review-section-title">原因 / 下一步</div>
+      <div class="content-box">{{ row.reason }}</div>
+      {% if prospect and prospect.next_action %}
+      <div class="muted mt-2">{{ prospect.next_action }}</div>
+      {% endif %}
+    </div>
+
+    <div class="review-text">
+      {% if mention %}<a class="btn btn-sm btn-primary" href="/mentions/{{ mention.id }}">查看证据</a>{% endif %}
+      {% if prospect %}<a class="btn btn-sm btn-outline-secondary mt-2" href="/prospects/{{ prospect.id }}">处理客户</a>{% endif %}
+    </div>
+  </article>
+  {% else %}
+  <div class="empty-state">暂无符合条件的国内线索。</div>
+  {% endfor %}
+</div>
+</form>
+{% endblock %}

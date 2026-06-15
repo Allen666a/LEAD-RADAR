@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card card-body" style="margin-bottom: 14px">
+  <strong>客户画像</strong>
+  <div class="muted">把同平台账号、作者或项目聚合成潜在客户；重点看动态住宅直匹配和场景匹配。</div>
+  <form method="post" action="/rebuild-prospects" style="margin-top:10px">
+    <button class="btn btn-sm btn-outline-secondary" type="submit">重建客户画像</button>
+  </form>
+</div>
+
+<div class="prospect-queue">
+  {% for row in prospects %}
+  {% set t = prospect_time(row) %}
+  <article class="prospect-card">
+    <div>
+      <a class="prospect-title" href="/prospects/{{ row.id }}">{{ row.display_name }}</a>
+      <div class="prospect-meta">{{ row.identity_key }}</div>
+      {% if row.profile_url %}
+      <div class="clickable-text mt-1"><a href="{{ row.profile_url }}" target="_blank" rel="noreferrer">主页</a> · {{ linkify(row.profile_url) }}</div>
+      {% endif %}
+    </div>
+
+    <div>
+      <div class="review-section-title">平台 / 评分</div>
+      <div>{{ row.platform }}</div>
+      <div class="mt-2"><span class="score {{ 'mid' if row.lead_score < 80 else '' }}">{{ row.lead_score }}</span></div>
+      <div class="mt-2"><span class="pill {{ t.class }}">{{ t.label }}</span></div>
+      <div class="cell-note">{{ t.basis }}：{{ format_dt(t.time) }}</div>
+    </div>
+
+    <div class="prospect-text">
+      <div class="review-section-title">画像</div>
+      <div>{{ product_fit_labels.get(row.product_fit, row.product_fit) }}</div>
+      <div>{{ customer_type_labels.get(row.customer_type, row.customer_type) }}</div>
+      <div class="mt-2">
+        <span class="pill good">高价值 {{ row.high_value_count }}</span>
+        <span class="pill">总 {{ row.mention_count }}</span>
+        {% if row.risk_count %}<span class="pill warn">风险 {{ row.risk_count }}</span>{% endif %}
+      </div>
+    </div>
+
+    <div class="prospect-text">
+      <div class="review-section-title">信号 / 关键词</div>
+      <div>{{ row.signal_types or "-" }}</div>
+      <div class="muted mt-2">{{ row.keywords or "-" }}</div>
+    </div>
+
+    <div>
+      <a class="btn btn-sm btn-primary" href="/prospects/{{ row.id }}">详情</a>
+    </div>
+  </article>
+  {% else %}
+  <div class="empty-state">暂无客户画像。</div>
+  {% endfor %}
+</div>
+{% endblock %}
