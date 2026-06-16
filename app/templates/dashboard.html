@@ -27,7 +27,7 @@
       </div>
     </div>
     <form method="get" action="/leads" class="lead-guide">
-      <input type="hidden" name="scope" value="all">
+      <input type="hidden" name="scope" value="{{ board.selected_scope }}">
       <div class="lead-segment-grid">
         {% for item in board.segments %}
         <label class="lead-option {{ 'active' if board.selected_segment == item.key else '' }}">
@@ -85,7 +85,7 @@
         <h2>找到的线索</h2>
         <p>每条都带来源、时间、为什么值得看和下一步动作。待复核线索先人工判断，再决定是否补联系方式。</p>
       </div>
-      <a class="btn btn-sm btn-outline-secondary" href="/leads?segment=all&scope=all&pool=usable&min_score=0">重置</a>
+      <a class="btn btn-sm btn-outline-secondary" href="/leads?segment=all&scope=domestic_contact&pool=usable&min_score=0">重置</a>
     </div>
 
     {% if board.examples %}
@@ -177,7 +177,7 @@
         <strong>暂时没有符合条件的线索</strong>
         <span>可以降低最低分、换一个客户类型，或启动国内源采集补充新数据。</span>
         <div>
-          <a class="btn btn-sm btn-primary" href="/leads?segment=all&scope=all&pool=usable&min_score=0">查看全部可用线索</a>
+          <a class="btn btn-sm btn-primary" href="/leads?segment=all&scope=domestic_contact&pool=usable&min_score=0">查看全部可用线索</a>
           <a class="btn btn-sm btn-outline-secondary" href="/session-collector">检查平台登录</a>
         </div>
       </div>

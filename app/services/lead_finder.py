@@ -15,6 +15,7 @@ from app.services.session_collector import run_enabled_session_collections
 from app.services.signals import HIGH_VALUE_SIGNALS
 
 MIN_LEAD_YEAR = 2026
+DEFAULT_SOURCE_SCOPE = "domestic_contact"
 
 
 @dataclass(frozen=True)
@@ -138,6 +139,30 @@ SEGMENTS = [
 
 
 SCOPES = [
+    LeadSourceScope(
+        "domestic_contact",
+        "国内易联系",
+        "默认视图：优先显示中文跨境卖家、国内公开搜索、已登录会话平台和容易补联系方式的线索；技术社区和国外论坛只做补充。",
+        (
+            "WeAreSellers",
+            "P34 WeAreSellers",
+            "HQ WeAreSellers",
+            "Amazon Seller Forum CN",
+            "HQ Amazon Seller CN",
+            "AMZ123",
+            "IKJZD",
+            "Ebrun",
+            "Zhihu",
+            "Baidu Tieba",
+            "Session 知乎",
+            "Session 百度贴吧",
+            "Session 小红书",
+            "Session 抖音",
+            "Session B站",
+            "Session 微博",
+            "Yuguo",
+        ),
+    ),
     LeadSourceScope(
         "domestic",
         "国内优先",
@@ -925,13 +950,13 @@ def build_lead_finder_board(
     db: Session,
     *,
     segment: str = "all",
-    scope: str = "all",
+    scope: str = DEFAULT_SOURCE_SCOPE,
     pool: str = "usable",
     min_score: int = 0,
     message: str = "",
 ) -> LeadFinderBoard:
     segment = segment if any(item.key == segment for item in SEGMENTS) else "all"
-    scope = scope if any(item.key == scope for item in SCOPES) else "all"
+    scope = scope if any(item.key == scope for item in SCOPES) else DEFAULT_SOURCE_SCOPE
     pool = pool if any(item.key == pool for item in POOLS) else "usable"
     min_score = max(0, min(100, min_score))
 

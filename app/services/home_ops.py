@@ -116,7 +116,7 @@ def build_home_ops_board(db: Session) -> HomeOpsBoard:
             description="只看动态住宅 IP 场景匹配、时间在 2026 年后的高相关需求。",
             metric=high_score_leads,
             metric_label="条高分",
-            href="/leads?segment=all&scope=all&pool=usable&min_score=0",
+            href="/leads?segment=all&scope=domestic_contact&pool=usable&min_score=0",
             button="去筛线索",
             state="ready" if high_score_leads else "empty",
             icon="ti ti-search",
@@ -285,7 +285,7 @@ def build_guidance(
             HomeGuidance(
                 title="还没有合格新线索",
                 description="先跑国内公开源；如果要采知乎、小红书、抖音，先确认平台登录状态。",
-                href="/leads?segment=all&scope=all&pool=usable&min_score=0",
+                href="/leads?segment=all&scope=domestic_contact&pool=usable&min_score=0",
                 button="去找线索",
                 tone="warn",
                 icon="ti ti-search",
@@ -329,7 +329,7 @@ def build_guidance(
             HomeGuidance(
                 title="降低门槛再看一轮",
                 description="当前没有今日任务，可以先降低最低分，或者换 TikTok、亚马逊、爬虫场景查看。",
-                href="/leads?segment=all&scope=all&pool=usable&min_score=0",
+                href="/leads?segment=all&scope=domestic_contact&pool=usable&min_score=0",
                 button="放宽条件",
                 tone="neutral",
                 icon="ti ti-adjustments",
@@ -339,7 +339,7 @@ def build_guidance(
         HomeGuidance(
             title="今天从找线索开始",
             description="先看是否有 2026 年后的动态住宅 IP 场景，再进入补联系方式和反馈闭环。",
-            href="/leads?segment=all&scope=all&pool=usable&min_score=0",
+            href="/leads?segment=all&scope=domestic_contact&pool=usable&min_score=0",
             button="去找线索",
             tone="neutral",
             icon="ti ti-search",

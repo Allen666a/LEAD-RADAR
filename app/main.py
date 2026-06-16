@@ -70,7 +70,7 @@ from app.services.domestic_review import apply_domestic_review_action, load_dome
 from app.services.home_ops import build_home_ops_board
 from app.services.imports import import_prospects_csv, sample_csv
 from app.services.lead_evidence import build_lead_evidence_report
-from app.services.lead_finder import build_lead_finder_board, run_lead_finder_search
+from app.services.lead_finder import DEFAULT_SOURCE_SCOPE, build_lead_finder_board, run_lead_finder_search
 from app.services.lead_quality_audit import build_lead_quality_audit
 from app.services.learning import build_learning_report, run_feedback_learning
 from app.services.notify import notify_wework
@@ -365,7 +365,7 @@ def render_leads_dashboard(
     request: Request,
     db: Session,
     segment: str = "all",
-    scope: str = "all",
+    scope: str = DEFAULT_SOURCE_SCOPE,
     pool: str = "usable",
     min_score: int = 0,
     message: str = "",
@@ -417,7 +417,7 @@ def toolbox_page(request: Request):
 def leads_dashboard(
     request: Request,
     segment: str = Query(default="all"),
-    scope: str = Query(default="all"),
+    scope: str = Query(default=DEFAULT_SOURCE_SCOPE),
     pool: str = Query(default="usable"),
     min_score: int = Query(default=0),
     message: str = Query(default=""),
@@ -578,7 +578,7 @@ def run_production_collect_background(source_limit: int = 200) -> None:
 @app.post("/leads/search")
 def run_lead_finder(
     segment: str = Form(default="all"),
-    scope: str = Form(default="all"),
+    scope: str = Form(default=DEFAULT_SOURCE_SCOPE),
     pool: str = Form(default="usable"),
     min_score: int = Form(default=0),
     source_limit: int = Form(default=0),
@@ -617,7 +617,10 @@ def run_once(db: Session = Depends(get_db)):
     message = quote(
         f"采集完成：读取 {result.get('fetched', 0)} 条，新增 {result.get('inserted', 0)} 条，清理低质/广告 {cleanup.get('deleted', 0)} 条。"
     )
-    return RedirectResponse(f"/leads?segment=all&scope=all&pool=usable&min_score=0&message={message}", status_code=303)
+    return RedirectResponse(
+        f"/leads?segment=all&scope={DEFAULT_SOURCE_SCOPE}&pool=usable&min_score=0&message={message}",
+        status_code=303,
+    )
 
 
 @app.post("/auto-collect")

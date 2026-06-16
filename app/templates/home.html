@@ -18,7 +18,7 @@
             <i class="ti ti-bolt me-1"></i>自动采集
           </button>
         </form>
-        <a class="btn btn-outline-secondary btn-lg" href="/leads?segment=all&scope=all&pool=usable&min_score=0">
+        <a class="btn btn-outline-secondary btn-lg" href="/leads?segment=all&scope=domestic_contact&pool=usable&min_score=0">
           <i class="ti ti-search me-1"></i>查看线索池
         </a>
         <a class="btn btn-outline-secondary btn-lg" href="/session-collector">
@@ -89,14 +89,14 @@
       <strong>自动采集后看线索池</strong>
       <p>采集只是入口，真正判断客户价值在“线索池”：时间、场景、客户类型、联系方式缺口都会在那里展示。</p>
     </div>
-    <a class="btn btn-primary" href="/leads?segment=all&scope=all&pool=usable&min_score=0">
+    <a class="btn btn-primary" href="/leads?segment=all&scope=domestic_contact&pool=usable&min_score=0">
       <i class="ti ti-search me-1"></i>进入线索池
     </a>
   </section>
 
   <section class="home-mini-flow" aria-label="获客流程">
     <a class="active" href="/"><b>1</b><span>自动采集</span></a>
-    <a href="/leads?segment=all&scope=all&pool=usable&min_score=0"><b>2</b><span>线索池</span></a>
+    <a href="/leads?segment=all&scope=domestic_contact&pool=usable&min_score=0"><b>2</b><span>线索池</span></a>
     <a href="/contact-workbench?mode=missing&platform=domestic&min_score=50"><b>3</b><span>补联系</span></a>
     <a href="/pipeline"><b>4</b><span>跟进</span></a>
   </section>
@@ -132,7 +132,7 @@
           <h2>线索预览</h2>
           <p>这里展示当前最值得看的几条，完整列表在“线索池”。</p>
         </div>
-        <a class="btn btn-sm btn-primary" href="/leads?segment=all&scope=all&pool=usable&min_score=0">进入线索池</a>
+        <a class="btn btn-sm btn-primary" href="/leads?segment=all&scope=domestic_contact&pool=usable&min_score=0">进入线索池</a>
       </div>
       <div class="home-lead-list">
         {% for row in board.top_leads %}
@@ -149,8 +149,8 @@
           <strong>暂无今日优先目标</strong>
           <span>先跑一轮国内线索，或放宽最低分查看是否有可用需求。</span>
           <div>
-            <a class="btn btn-sm btn-primary" href="/leads?segment=all&scope=all&pool=usable&min_score=0">去找线索</a>
-            <a class="btn btn-sm btn-outline-secondary" href="/leads?segment=all&scope=all&pool=usable&min_score=0">查看全部</a>
+            <a class="btn btn-sm btn-primary" href="/leads?segment=all&scope=domestic_contact&pool=usable&min_score=0">去找线索</a>
+            <a class="btn btn-sm btn-outline-secondary" href="/leads?segment=all&scope=domestic_contact&pool=usable&min_score=0">查看全部</a>
           </div>
         </div>
         {% endfor %}
